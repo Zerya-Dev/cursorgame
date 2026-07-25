@@ -69,7 +69,10 @@ const server = defineServer({
         if (process.env.NODE_ENV !== "production") {
             app.use("/", playground());
         } else {
-            app.get("*", (_req, res) => res.sendFile(path.join(frontendDist, "index.html")));
+	        app.use(express.static(frontendDist));
+	        app.get("/", (_req, res) => {
+		        res.sendFile(path.join(frontendDist, "index.html"));
+	        });
         }
     }
 
