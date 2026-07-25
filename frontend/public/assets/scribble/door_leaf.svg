@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 48" width="128" height="48">
+  <!-- One leaf of a top-down castle door: a flat wooden plank slab, hinge end
+       at x=0 (stays against the jamb), swinging/free end at x=128. -->
+  <path d="M3 5 C40 3.4 84 3.6 124.5 5.2 C126 15 126.2 33 124.5 42.8
+           C84 44.4 40 44.6 3 43 C1.6 33 1.4 15 3 5 Z"
+        fill="#b98a55" stroke="#1a1a1a" stroke-width="3.2"
+        stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- plank seams -->
+  <g stroke="#1a1a1a" stroke-width="1.6" opacity="0.55" stroke-linecap="round">
+    <path d="M31 5 L30 43"/>
+    <path d="M65 4.6 L65 43.4"/>
+    <path d="M97 5 L98 43"/>
+  </g>
+  <!-- iron bracing, so it reads as a fortified door rather than a plain plank -->
+  <g stroke="#1a1a1a" stroke-width="2.6" opacity="0.75" stroke-linecap="round">
+    <path d="M8 10 L120 22"/>
+    <path d="M8 38 L120 26"/>
+  </g>
+  <!-- hinge, on the jamb end -->
+  <circle cx="9" cy="24" r="5.4" fill="#1a1a1a"/>
+  <!-- handle ring, on the swinging end -->
+  <circle cx="115" cy="24" r="4.6" fill="none" stroke="#1a1a1a" stroke-width="2.6"/>
+</svg>

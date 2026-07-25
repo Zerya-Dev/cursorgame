@@ -24,7 +24,9 @@ import {
 } from "../gameplay/levelView";
 import type { ButtonRuntime, DoorRuntime, PlateRuntime } from "../gameplay/levelView";
 import { buildLavaZones, findLavaZone } from "../gameplay/lava";
+import { SLIDE_DEFAULT_SPEED, SLIDE_MAX_MS, buildSlides, findSlide } from "../gameplay/slide";
 import { buildWorldTexts } from "../gameplay/worldText";
+import { FONT_HAND, INK_SOFT_CSS } from "../gameplay/palette";
 import { RenderPlayers } from "../gameplay/renderPlayers";
 import { SprayLayer } from "../gameplay/spray";
 import { createEntityView } from "../entities/registry";
@@ -42,7 +44,7 @@ export class GameScene extends Phaser.Scene {
   private pendingInput = new Phaser.Math.Vector2();
   private localColor = 0x4ade80;
   private pointerLocked = false;
-  private hint!: Phaser.GameObjects.Text;
+  private status!: Phaser.GameObjects.Text;
   private coordsLabel!: Phaser.GameObjects.Text;
   private doors: DoorRuntime[] = [];
   private plates: PlateRuntime[] = [];
@@ -56,6 +58,13 @@ export class GameScene extends Phaser.Scene {
   private sprayStartedAt = 0;
   private nextSprayUpdate = 0;
   private facingAngle = 0;
+  private ride?: {
+    path: Array<{ x: number; y: number }>;
+    /** index of the waypoint currently being travelled toward */
+    leg: number;
+    speed: number;
+    endsAt: number;
+  };
   private touchNavigation = false;
   private touchPointerId?: number;
   private previousTouch = new Phaser.Math.Vector2();
@@ -70,13 +79,6 @@ export class GameScene extends Phaser.Scene {
     super("GameScene");
   }
 
-  preload() {
-    this.load.svg("cursorIcon", "assets/cursor-alt-svgrepo-com.svg", {
-      width: 48,
-      height: 48,
-    });
-  }
-
   create() {
     this.physics?.world?.setBounds?.(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
@@ -86,6 +88,7 @@ export class GameScene extends Phaser.Scene {
     this.doors = doors;
     this.plates = plates;
     buildLavaZones(this, LAVA_ZONES);
+    buildSlides(this, 1);
     buildWorldTexts(this, WORLD_TEXTS);
     this.button = buildButton(this);
     this.renderPlayers = new RenderPlayers(this);
@@ -94,30 +97,28 @@ export class GameScene extends Phaser.Scene {
 
     const startX = SPAWN_POINT.x;
     const startY = SPAWN_POINT.y;
-    this.cursorOutline = this.add.image(startX, startY, "cursorIcon");
-    this.cursorOutline.setTint(0xffffff); // White outline
-    this.cursorOutline.setScale(1.2); // Slightly larger than original
-    this.cursorOutline.setDepth(9);
-    this.cursor = this.add.image(startX, startY, "cursorIcon");
+    // `cursor` stays the positioned object every other system already reads
+    // (collision, camera, colour stations); the ink layer just follows it.
+    this.cursor = this.add.image(startX, startY, "mouseBody");
     this.cursor.setTint(this.localColor);
-    this.cursor.setDepth(10);
+    this.cursor.setDepth(9);
+    this.cursorOutline = this.add.image(startX, startY, "mouseInk");
+    this.cursorOutline.setDepth(10);
 
     this.sprayLayer = new SprayLayer(this);
 
     this.cameras.main.startFollow(this.cursor, true, 0.35, 0.35);
     this.cameras.main.setDeadzone(100, 80);
 
-    this.hint = this.add
-      .text(12, 12, "Click to catch the cursor", {
-        fontFamily: "monospace",
-        fontSize: "14px",
-        color: "#8888aa",
-      })
+    // The narration proper lives on the dungeon floor (WORLD_TEXTS); this is
+    // only for connection state, which has nowhere in-world to live.
+    this.status = this.add
+      .text(16, 14, "", { fontFamily: FONT_HAND, fontSize: "22px", color: INK_SOFT_CSS })
       .setScrollFactor(0)
       .setDepth(1000);
 
     this.coordsLabel = this.add
-      .text(0, 0, "", { fontFamily: "monospace", fontSize: "12px", color: "#8888aa" })
+      .text(0, 0, "", { fontFamily: "monospace", fontSize: "12px", color: INK_SOFT_CSS })
       .setScrollFactor(0)
       .setDepth(1000)
       .setVisible(false);
@@ -125,6 +126,7 @@ export class GameScene extends Phaser.Scene {
     if (this.touchNavigation) this.updateHint();
 
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      this.setClicking(pointer.rightButtonDown() ? "right" : "left");
       if (pointer.rightButtonDown()) {
         this.spraying = true;
         this.sprayStartedAt = this.time.now;
@@ -166,6 +168,7 @@ export class GameScene extends Phaser.Scene {
     this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
       if (pointer.id === this.touchPointerId) this.touchPointerId = undefined;
       if (pointer.button === 2) this.stopSpraying();
+      this.setClicking(null);
     });
 
     const stopSpray = () => this.stopSpraying();
@@ -178,15 +181,15 @@ export class GameScene extends Phaser.Scene {
       onState: (state, sessionId) => this.syncState(state, sessionId),
       onSpray: (x, y, angle, color) => this.sprayLayer.spray(this.time.now, x, y, angle, color),
       onButtonPress: () => animateButtonPress(this, this.button),
-      onConnected: () => this.hint.setText("Connected - click to catch the cursor"),
+      onConnected: () => this.updateHint(),
       onDisconnected: () => {
         this.renderPlayers.clear();
         this.clearEntities();
-        if (this.scene.isActive()) this.hint.setText("Disconnected from server");
+        if (this.scene.isActive()) this.status.setText("the dungeon went quiet...");
       },
       onError: (error) => {
         console.error("Could not connect to the game server", error);
-        if (this.scene.isActive()) this.hint.setText("Could not connect to server");
+        if (this.scene.isActive()) this.status.setText("could not reach the dungeon");
       },
     });
     void this.multiplayer.connect();
@@ -225,30 +228,37 @@ export class GameScene extends Phaser.Scene {
 
     const dt = Math.min(deltaMs / 1000, 0.05);
 
-    this.velocity.x += this.pendingInput.x * this.sensitivity * this.movementResponse;
-    this.velocity.y += this.pendingInput.y * this.sensitivity * this.movementResponse;
-    this.pendingInput.set(0, 0);
-
-    const speed = this.velocity.length();
-    if (speed > this.maxSpeed) {
-      this.velocity.scale(this.maxSpeed / speed);
-    }
-    if (speed > 5) {
-      this.facingAngle = Math.atan2(this.velocity.y, this.velocity.x);
-    }
-
-    const decay = Math.exp(-this.movementResponse * dt);
-    const travelScale = (1 - decay) / this.movementResponse;
-    const dx = this.velocity.x * travelScale;
-    const dy = this.velocity.y * travelScale;
-    this.velocity.scale(decay);
-
     const solids = this.collectSolids();
     const cursorFromX = this.cursor.x;
     const cursorFromY = this.cursor.y;
-    moveAndCollide(this.cursor, this.velocity, this.radius, dx, dy, solids);
 
-    this.updateLava();
+    if (this.updateSlide(time, dt)) {
+      // riding: input is dropped on the floor rather than banked up, so you
+      // don't get flung when the ride lets go
+      this.pendingInput.set(0, 0);
+      this.velocity.set(0, 0);
+    } else {
+      this.velocity.x += this.pendingInput.x * this.sensitivity * this.movementResponse;
+      this.velocity.y += this.pendingInput.y * this.sensitivity * this.movementResponse;
+      this.pendingInput.set(0, 0);
+
+      const speed = this.velocity.length();
+      if (speed > this.maxSpeed) {
+        this.velocity.scale(this.maxSpeed / speed);
+      }
+      if (speed > 5) {
+        this.facingAngle = Math.atan2(this.velocity.y, this.velocity.x);
+      }
+
+      const decay = Math.exp(-this.movementResponse * dt);
+      const travelScale = (1 - decay) / this.movementResponse;
+      const dx = this.velocity.x * travelScale;
+      const dy = this.velocity.y * travelScale;
+      this.velocity.scale(decay);
+
+      moveAndCollide(this.cursor, this.velocity, this.radius, dx, dy, solids);
+      this.updateLava();
+    }
 
     this.renderPlayers.update(dt);
     this.updateEntities(dt, {
@@ -265,7 +275,61 @@ export class GameScene extends Phaser.Scene {
     this.multiplayer?.publishPosition(time, this.cursor.x, this.cursor.y);
     this.updateColorStation();
     this.updateSpray(time);
-    this.cursorOutline.setPosition(this.cursor.x, this.cursor.y);
+    // the art points up (-Y), facingAngle is measured from +X
+    const heading = this.facingAngle + Math.PI / 2;
+    this.cursor.setRotation(heading);
+    this.cursorOutline.setPosition(this.cursor.x, this.cursor.y).setRotation(heading);
+  }
+
+  /**
+   * Slides take control away and carry you to the exit. Movement here is
+   * deliberately NOT collision-checked -- a chute that could snag on a wall
+   * would strand the player, so the level data owns keeping the path clear.
+   * Returns true while a ride is in progress.
+   */
+  private updateSlide(time: number, dt: number): boolean {
+    if (!this.ride) {
+      const slide = findSlide(this.cursor, this.radius);
+      if (!slide) return false;
+      this.ride = {
+        path: slide.path,
+        leg: 0,
+        speed: slide.speed ?? SLIDE_DEFAULT_SPEED,
+        endsAt: time + SLIDE_MAX_MS,
+      };
+    }
+
+    // Budget for this frame, spent walking down the path. A single frame can
+    // cross a short leg entirely, so keep consuming legs until it runs out.
+    let budget = this.ride.speed * dt;
+
+    while (budget > 0) {
+      if (this.ride.leg >= this.ride.path.length || time >= this.ride.endsAt) {
+        const last = this.ride.path[this.ride.path.length - 1];
+        this.cursor.setPosition(last.x, last.y);
+        this.ride = undefined;
+        return false;
+      }
+
+      const target = this.ride.path[this.ride.leg];
+      const dx = target.x - this.cursor.x;
+      const dy = target.y - this.cursor.y;
+      const distance = Math.hypot(dx, dy);
+
+      if (distance <= budget) {
+        this.cursor.setPosition(target.x, target.y);
+        budget -= distance;
+        this.ride.leg += 1;
+        continue;
+      }
+
+      this.cursor.x += (dx / distance) * budget;
+      this.cursor.y += (dy / distance) * budget;
+      this.facingAngle = Math.atan2(dy, dx);
+      budget = 0;
+    }
+
+    return true;
   }
 
   private updateSpray(time: number) {
@@ -291,6 +355,21 @@ export class GameScene extends Phaser.Scene {
 
   private stopSpraying() {
     this.spraying = false;
+  }
+
+  /** swap the avatar's linework so which button is down is visible on the mouse itself */
+  private setClicking(button: "left" | "right" | null) {
+    this.cursorOutline.setTexture(
+      button === "left" ? "mouseInkClickLeft" : button === "right" ? "mouseInkClickRight" : "mouseInk",
+    );
+    this.tweens.killTweensOf([this.cursor, this.cursorOutline]);
+    this.tweens.add({
+      targets: [this.cursor, this.cursorOutline],
+      scaleX: button ? 0.92 : 1,
+      scaleY: button ? 0.92 : 1,
+      duration: 90,
+      ease: "Quad.easeOut",
+    });
   }
 
   private syncState(state: RoomState, localSessionId: string) {
@@ -372,11 +451,9 @@ export class GameScene extends Phaser.Scene {
 
   private updateHint(locked = this.input.mouse?.locked ?? false) {
     if (this.touchNavigation) {
-      this.hint.setText("Swipe anywhere to move");
+      this.status.setText("swipe anywhere to scurry");
       return;
     }
-    this.hint.setText(
-      locked ? "Cursor caught! Move the mouse (Esc to release)" : "Click to catch the cursor",
-    );
+    this.status.setText(locked ? "esc to let go" : "click to grab the mouse");
   }
 }

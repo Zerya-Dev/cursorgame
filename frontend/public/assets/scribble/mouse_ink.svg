@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Linework only, never tinted. Points "up" (-Y), so the sprite is rotated
+       by facingAngle + PI/2 to face the direction of travel. -->
+  <g fill="none" stroke="#1a1a1a" stroke-width="3.4"
+     stroke-linecap="round" stroke-linejoin="round">
+    <!-- body outline, deliberately uneven so it reads as hand-drawn -->
+    <path d="M32 4.5 C43 4.8 51.2 14.6 51 26.2 C50.8 38.4 43.2 45.6 32 45.4
+             C20.8 45.6 13.2 38.4 13 26.2 C12.8 14.6 21 4.8 32 4.5 Z"/>
+    <!-- scroll wheel sits at the front, above the split -->
+    <path d="M32 9.6 L32 16.4" stroke-width="5.4" stroke-linecap="round"/>
+    <!-- split between the two buttons, starting below the wheel -->
+    <path d="M32 20.4 C31.6 24.5 32.3 28.5 31.9 31.8" stroke-width="2.4"/>
+    <!-- the cord, run out of the back so it trails like a tail -->
+    <path d="M32 45.4 C29.8 51 36.4 54.2 34.2 60.4" stroke-width="2.6"/>
+  </g>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Tintable silhouette only. Kept separate from mouse_ink.svg because
+       Phaser's setTint multiplies, so tinting black linework does nothing. -->
+  <path d="M32 4.5 C43 4.8 51.2 14.6 51 26.2 C50.8 38.4 43.2 45.6 32 45.4
+           C20.8 45.6 13.2 38.4 13 26.2 C12.8 14.6 21 4.8 32 4.5 Z"
+        fill="#ffffff"/>
+</svg>

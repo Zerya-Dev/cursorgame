@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- The goal. Ink outline over a flat fill, matching the pack's language. -->
+  <path d="M7 44.5 C6.6 36 12 26.5 22.5 20.5 C35 13.4 49 12.6 56.5 17.4
+           C58.2 18.5 58.6 20.4 57.4 21.8 L18.6 47.6
+           C16.9 48.8 14.6 49.2 12.4 48.6 C9.4 47.8 7.2 46.4 7 44.5 Z"
+        fill="#f2c14e"/>
+  <g fill="#e0a92e">
+    <ellipse cx="21" cy="35" rx="5.2" ry="4.4"/>
+    <ellipse cx="35" cy="26" rx="4.2" ry="3.6"/>
+    <ellipse cx="46" cy="21" rx="3.4" ry="2.8"/>
+    <ellipse cx="30" cy="40" rx="3" ry="2.5"/>
+  </g>
+  <g fill="none" stroke="#1a1a1a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M7 44.5 C6.6 36 12 26.5 22.5 20.5 C35 13.4 49 12.6 56.5 17.4
+             C58.2 18.5 58.6 20.4 57.4 21.8 L18.6 47.6
+             C16.9 48.8 14.6 49.2 12.4 48.6 C9.4 47.8 7.2 46.4 7 44.5 Z"/>
+    <ellipse cx="21" cy="35" rx="5.2" ry="4.4" stroke-width="2.2"/>
+    <ellipse cx="35" cy="26" rx="4.2" ry="3.6" stroke-width="2.2"/>
+    <ellipse cx="46" cy="21" rx="3.4" ry="2.8" stroke-width="2.2"/>
+  </g>
+</svg>

@@ -5,7 +5,7 @@
     "correctness": "error"
   },
   "rules": {},
-  "ignorePatterns": ["**/dist", "**/build"],
+  "ignorePatterns": ["**/dist", "**/build", "kenney_scribbledungeons"],
   "env": {
     "builtin": true
   },

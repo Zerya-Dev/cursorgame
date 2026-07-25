@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Right-button pressed: mirror of the left variant, no fill mask,
+       just a heavier retrace of the right half plus its own action lines. -->
+  <g fill="none" stroke="#1a1a1a" stroke-width="3.4"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M32 4.5 C43 4.8 51.2 14.6 51 26.2 C50.8 38.4 43.2 45.6 32 45.4
+             C20.8 45.6 13.2 38.4 13 26.2 C12.8 14.6 21 4.8 32 4.5 Z"/>
+    <path d="M32 9.6 L32 16.4" stroke-width="5.4" stroke-linecap="round"/>
+    <path d="M32 20.4 C31.6 24.5 32.3 28.5 31.9 31.8" stroke-width="2.4"/>
+    <path d="M32 45.4 C29.8 51 36.4 54.2 34.2 60.4" stroke-width="2.6"/>
+    <!-- pressed emphasis: right half retraced heavier -->
+    <path d="M32 4.5 C43 4.8 51.2 14.6 51 26.2 C50.8 38.4 43.2 45.6 32 45.4" stroke-width="5.6"/>
+    <!-- click sparks -->
+    <path d="M55 12 L59.5 8" stroke-width="2.6"/>
+    <path d="M32 2.5 L32 -2" stroke-width="2.6"/>
+  </g>
+</svg>

@@ -1,5 +1,7 @@
+import "@fontsource/patrick-hand";
 import Phaser from "phaser";
 import { GAME_HEIGHT, GAME_WIDTH } from "./config";
+import { PAPER_CSS } from "./gameplay/palette";
 import { BootScene } from "./scenes/BootScene";
 import { GameScene } from "./scenes/GameScene";
 
@@ -8,7 +10,7 @@ const config: Phaser.Types.Core.GameConfig = {
   parent: "game",
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
-  backgroundColor: "#16213e",
+  backgroundColor: PAPER_CSS,
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.NO_CENTER,
@@ -19,4 +21,5 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [BootScene, GameScene],
 };
 
-new Phaser.Game(config);
+const game = new Phaser.Game(config);
+if (import.meta.env.DEV) (window as unknown as { game: Phaser.Game }).game = game;
