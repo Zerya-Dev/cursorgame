@@ -8,6 +8,7 @@ import { buildInteractables, drawLevel } from "../gameplay/levelView";
 import type { DoorRuntime, PlateRuntime } from "../gameplay/levelView";
 import { buildLavaZones, findLavaZone } from "../gameplay/lava";
 import { RenderPlayers } from "../gameplay/renderPlayers";
+import { SprayLayer } from "../gameplay/spray";
 import { createEntityView } from "../entities/registry";
 import type { EntityView, PredictionContext } from "../entities/registry";
 import { MultiplayerClient } from "../network/MultiplayerClient";
@@ -31,6 +32,11 @@ export class GameScene extends Phaser.Scene {
   private renderPlayers!: RenderPlayers;
   private entities = new Map<string, EntityView>();
   private activeColorStation?: string;
+  private sprayLayer!: SprayLayer;
+  private spraying = false;
+  private sprayStartedAt = 0;
+  private nextSprayUpdate = 0;
+  private facingAngle = 0;
   private touchNavigation = false;
   private touchPointerId?: number;
   private previousTouch = new Phaser.Math.Vector2();
@@ -38,6 +44,8 @@ export class GameScene extends Phaser.Scene {
   private readonly sensitivity = 0.82;
   private readonly movementResponse = 14;
   private readonly maxSpeed = 1400;
+  private readonly sprayMaxDurationMs = 2000;
+  private readonly sprayNetworkIntervalMs = 25;
 
   constructor() {
     super("GameScene");
@@ -73,6 +81,8 @@ export class GameScene extends Phaser.Scene {
     this.cursor.setTint(this.localColor);
     this.cursor.setDepth(10);
 
+    this.sprayLayer = new SprayLayer(this);
+
     this.cameras.main.startFollow(this.cursor, true, 0.35, 0.35);
     this.cameras.main.setDeadzone(100, 80);
 
@@ -94,6 +104,11 @@ export class GameScene extends Phaser.Scene {
     if (this.touchNavigation) this.updateHint();
 
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      if (pointer.rightButtonDown()) {
+        this.spraying = true;
+        this.sprayStartedAt = this.time.now;
+        return;
+      }
       if (this.touchNavigation) {
         if (this.touchPointerId === undefined) {
           this.touchPointerId = pointer.id;
@@ -121,12 +136,18 @@ export class GameScene extends Phaser.Scene {
 
     this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
       if (pointer.id === this.touchPointerId) this.touchPointerId = undefined;
+      if (pointer.button === 2) this.stopSpraying();
     });
+
+    const stopSpray = () => this.stopSpraying();
+    this.input.on("pointerout", stopSpray);
+    this.game.events.on(Phaser.Core.Events.BLUR, stopSpray);
 
     this.input.keyboard?.on("keydown-ESC", () => this.input.mouse?.releasePointerLock());
 
     this.multiplayer = new MultiplayerClient({
       onState: (state, sessionId) => this.syncState(state, sessionId),
+      onSpray: (x, y, angle, color) => this.sprayLayer.spray(this.time.now, x, y, angle, color),
       onConnected: () => this.hint.setText("Connected - click to catch the cursor"),
       onDisconnected: () => {
         this.renderPlayers.clear();
@@ -145,6 +166,7 @@ export class GameScene extends Phaser.Scene {
       this.multiplayer = undefined;
       this.renderPlayers.clear();
       this.clearEntities();
+      this.game.events.off(Phaser.Core.Events.BLUR, stopSpray);
     });
   }
 
@@ -181,6 +203,9 @@ export class GameScene extends Phaser.Scene {
     if (speed > this.maxSpeed) {
       this.velocity.scale(this.maxSpeed / speed);
     }
+    if (speed > 5) {
+      this.facingAngle = Math.atan2(this.velocity.y, this.velocity.x);
+    }
 
     const decay = Math.exp(-this.movementResponse * dt);
     const travelScale = (1 - decay) / this.movementResponse;
@@ -209,7 +234,33 @@ export class GameScene extends Phaser.Scene {
     });
     this.multiplayer?.publishPosition(time, this.cursor.x, this.cursor.y);
     this.updateColorStation();
+    this.updateSpray(time);
     this.cursorOutline.setPosition(this.cursor.x, this.cursor.y);
+  }
+
+  private updateSpray(time: number) {
+    if (this.spraying) {
+      if (time - this.sprayStartedAt >= this.sprayMaxDurationMs) {
+        this.stopSpraying();
+      } else {
+        this.sprayLayer.spray(
+          time,
+          this.cursor.x,
+          this.cursor.y,
+          this.facingAngle,
+          this.localColor,
+        );
+        if (time >= this.nextSprayUpdate) {
+          this.multiplayer?.spray(this.cursor.x, this.cursor.y, this.facingAngle, this.localColor);
+          this.nextSprayUpdate = time + this.sprayNetworkIntervalMs;
+        }
+      }
+    }
+    this.sprayLayer.update(time);
+  }
+
+  private stopSpraying() {
+    this.spraying = false;
   }
 
   private syncState(state: RoomState, localSessionId: string) {

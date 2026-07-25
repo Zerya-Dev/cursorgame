@@ -13,6 +13,7 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.NO_CENTER,
   },
+  disableContextMenu: true,
   scene: [BootScene, GameScene],
 };
 

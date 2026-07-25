@@ -32,6 +32,36 @@ export class MainRoom extends Room {
       const station = COLOR_STATIONS.find(({ color }) => color === message.color);
       if (station && this.playerOverlaps(player, station)) player.color = station.color;
     },
+    spray: (
+      client: Client,
+      message: { x?: unknown; y?: unknown; angle?: unknown; color?: unknown },
+    ) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+      const { x, y, angle, color } = message;
+      if (
+        typeof x !== "number" ||
+        typeof y !== "number" ||
+        typeof angle !== "number" ||
+        typeof color !== "number" ||
+        !Number.isFinite(x) ||
+        !Number.isFinite(y) ||
+        !Number.isFinite(angle) ||
+        !Number.isFinite(color)
+      ) {
+        return;
+      }
+      this.broadcast(
+        "spray",
+        {
+          x: Math.max(12, Math.min(3188, x)),
+          y: Math.max(12, Math.min(2388, y)),
+          angle,
+          color: color & 0xffffff,
+        },
+        { except: client },
+      );
+    },
   };
 
   onCreate() {
