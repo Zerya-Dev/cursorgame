@@ -1,5 +1,6 @@
 import { Room, Client, CloseCode } from "colyseus";
-import { Door, MainRoomState, Player, PressurePlate } from "./schema/MainRoomState.js";
+import { MainRoomState } from "./schema/MainRoomState.js";
+import {Door, Player, PressurePlate} from "./schema/GeneralSchemas.js";
 
 const PLAYER_RADIUS = 12;
 const DOOR_HOLD_MS = 1200;
@@ -22,7 +23,8 @@ function overlapsRect(player: Player, rect: { x: number; y: number; width: numbe
 }
 
 export class MainRoom extends Room {
-  maxClients = 500;
+  maxClients = 8;
+  patchRate = 20;
   state = new MainRoomState();
   private doorOpenUntil = new Map<string, number>();
 
@@ -62,6 +64,8 @@ export class MainRoom extends Room {
   onJoin(client: Client) {
     const player = new Player();
     player.name = "TestPlayer_" + client.sessionId;
+    player.x = 0;
+    player.y = 0;
     this.state.players.set(client.sessionId, player);
     console.log(client.sessionId, "joined!");
   }
