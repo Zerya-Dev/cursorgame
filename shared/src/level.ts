@@ -27,7 +27,8 @@ export type PlateCountRule =
   | { mode: "atLeast"; value: number }
   | { mode: "exact"; value: number }
   | { mode: "even" }
-  | { mode: "allPlayers" };
+  | { mode: "allPlayers" }
+  | { mode: "balance"; withPlateId: string; maxDifference?: number };
 
 export interface PressurePlate extends Rect {
   id: string;
@@ -56,15 +57,18 @@ export interface WorldText {
 
 const T = 40; // wall thickness
 
-// Where the corridor (above) narrows down into the lobby (below).
 const LOBBY_TOP = CORRIDOR_HEIGHT;
 const CORRIDOR_LEFT = (WORLD_WIDTH - CORRIDOR_WIDTH) / 2;
 const CORRIDOR_RIGHT = CORRIDOR_LEFT + CORRIDOR_WIDTH;
 
-// A full-width room at the far end of the corridor (the top of the map), carved out by
-// starting the corridor's flanking walls below it instead of right at the top wall.
 const ROOM_HEIGHT = 500;
 const ROOM_BOTTOM = T + ROOM_HEIGHT;
+
+const LEVEL1_DOOR_Y = 900;
+const LEVEL1_TOP = LEVEL1_DOOR_Y + 30;
+const LEVEL1_BOTTOM = 1630;
+const LEVEL1_LEFT = 300;
+const LEVEL1_RIGHT = 1300;
 
 export const SPAWN_POINT = { x: WORLD_WIDTH / 2, y: LOBBY_TOP + LOBBY_HEIGHT / 2 };
 
@@ -87,30 +91,44 @@ export interface EntityKindConfig {
 }
 
 export const OBSTACLES: Obstacle[] = [
-  // Outer walls
   { x: 0, y: 0, width: WORLD_WIDTH, height: T },
   { x: 0, y: WORLD_HEIGHT - T, width: WORLD_WIDTH, height: T },
   { x: 0, y: 0, width: T, height: WORLD_HEIGHT },
   { x: WORLD_WIDTH - T, y: 0, width: T, height: WORLD_HEIGHT },
 
-  // Corridor funnel: narrows the room at the top into the corridor, which then
-  // widens back out into the lobby below.
-  { x: T, y: ROOM_BOTTOM, width: CORRIDOR_LEFT - T, height: LOBBY_TOP - ROOM_BOTTOM },
+  { x: T, y: ROOM_BOTTOM, width: CORRIDOR_LEFT - T, height: LEVEL1_TOP - ROOM_BOTTOM },
   {
     x: CORRIDOR_RIGHT,
     y: ROOM_BOTTOM,
     width: WORLD_WIDTH - T - CORRIDOR_RIGHT,
-    height: LOBBY_TOP - ROOM_BOTTOM,
+    height: LEVEL1_TOP - ROOM_BOTTOM,
+  },
+
+  { x: T, y: LEVEL1_TOP, width: LEVEL1_LEFT - T, height: LEVEL1_BOTTOM - LEVEL1_TOP },
+  {
+    x: LEVEL1_RIGHT,
+    y: LEVEL1_TOP,
+    width: WORLD_WIDTH - T - LEVEL1_RIGHT,
+    height: LEVEL1_BOTTOM - LEVEL1_TOP,
+  },
+
+  { x: T, y: LEVEL1_BOTTOM, width: CORRIDOR_LEFT - T, height: LOBBY_TOP - LEVEL1_BOTTOM },
+  {
+    x: CORRIDOR_RIGHT,
+    y: LEVEL1_BOTTOM,
+    width: WORLD_WIDTH - T - CORRIDOR_RIGHT,
+    height: LOBBY_TOP - LEVEL1_BOTTOM,
   },
 
   { x: 40, y: 2000, width: 200, height: LOBBY_TOP - T },
   { x: 1400, y: 2000, width: 200, height: LOBBY_TOP - T },
 ];
 
-export const DOORS: Door[] = [{ x: 680, y: 1970, width: 320, height: 30, id: "0" }];
+export const DOORS: Door[] = [
+  { x: 680, y: 1970, width: 320, height: 30, id: "0" },
+  { x: CORRIDOR_LEFT, y: LEVEL1_DOOR_Y, width: CORRIDOR_WIDTH, height: 30, id: "1", permanent: true },
+];
 
-// 10 lobby plates, 5 per side; door "0" needs every single one filled by exactly
-// one player, i.e. the whole party has to find a slot before it opens.
 export const PLATES: PressurePlate[] = [
   {
     id: "plate-lobby-left-1",
@@ -212,6 +230,27 @@ export const PLATES: PressurePlate[] = [
     filter: { entityKind: "player" },
     count: { mode: "exact", value: 1 },
   },
+
+  {
+    id: "plate-level1-left",
+    x: 380,
+    y: LEVEL1_TOP + 200,
+    width: 300,
+    height: 300,
+    doorIds: ["1"],
+    filter: { entityKind: "player" },
+    count: { mode: "balance", withPlateId: "plate-level1-right" },
+  },
+  {
+    id: "plate-level1-right",
+    x: 920,
+    y: LEVEL1_TOP + 200,
+    width: 300,
+    height: 300,
+    doorIds: ["1"],
+    filter: { entityKind: "player" },
+    count: { mode: "balance", withPlateId: "plate-level1-left" },
+  },
 ];
 
 export const DOOR_RECTS: Record<string, Rect> = Object.fromEntries(
@@ -220,10 +259,6 @@ export const DOOR_RECTS: Record<string, Rect> = Object.fromEntries(
 export const DOOR_IDS = DOORS.map((door) => door.id);
 
 export const COLOR_STATIONS: ColorStation[] = [
-  // { color: "#4ade80", label: "GREEN", x: 600, y: 2300, width: 70, height: 70 },
-  // { color: "#60a5fa", label: "BLUE", x: 690, y: 2300, width: 70, height: 70 },
-  // { color: "#f472b6", label: "PINK", x: 840, y: 2300, width: 70, height: 70 },
-  // { color: "#facc15", label: "GOLD", x: 930, y: 2300, width: 70, height: 70 },
   { color: "#ff0000", label: "RED", x: 630, y: 2300, width: 70, height: 70 },
   { color: "#00f84f", label: "GREEN", x: 720, y: 2300, width: 70, height: 70 },
   { color: "#0014ed", label: "BLUE", x: 810, y: 2300, width: 70, height: 70 },
@@ -235,6 +270,7 @@ export const LAVA_ZONES: LavaZone[] = [];
 export const WORLD_TEXTS: WorldText[] = [
   { x: 552, y: 2100, text: "Hellllo there!", size: 45 },
   { x: 806, y: 2178, text: "Pick a color!", size: 30 },
+  { x: 548, y: LEVEL1_TOP + 40, text: "Split evenly - half left, half right", size: 28 },
 ];
 
 export interface ButtonDef extends Rect {}

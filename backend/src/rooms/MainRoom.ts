@@ -17,6 +17,7 @@ import {
   WORLD_WIDTH,
   circleOverlapsRect,
   evaluatePlate,
+  occupantMatchesFilter,
 } from "@shared";
 import type { PlateOccupant, PressurePlate as PlateDef, Rect } from "@shared";
 
@@ -178,10 +179,27 @@ export class MainRoom extends Room {
   private updateGameplay() {
     const now = Date.now();
     const totalPlayers = this.state.players.size;
-    const activePlates = new Map<string, boolean>();
 
+    const occupantsByPlate = new Map<string, PlateOccupant[]>();
+    const matchingCounts = new Map<string, number>();
     for (const definition of PLATES) {
-      const active = evaluatePlate(this.plateOccupants(definition), definition, totalPlayers);
+      const occupants = this.plateOccupants(definition);
+      occupantsByPlate.set(definition.id, occupants);
+      matchingCounts.set(
+        definition.id,
+        occupants.filter((occupant) => occupantMatchesFilter(occupant, definition.filter)).length,
+      );
+    }
+    const otherCount = (plateId: string) => matchingCounts.get(plateId) ?? 0;
+
+    const activePlates = new Map<string, boolean>();
+    for (const definition of PLATES) {
+      const active = evaluatePlate(
+        occupantsByPlate.get(definition.id) ?? [],
+        definition,
+        totalPlayers,
+        otherCount,
+      );
       activePlates.set(definition.id, active);
       const plate = this.state.plates.get(definition.id);
       if (plate) plate.active = active;

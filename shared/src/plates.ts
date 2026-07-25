@@ -13,10 +13,17 @@ export function occupantMatchesFilter(occupant: PlateOccupant, filter?: PlateFil
   return true;
 }
 
+// Looks up how many matching occupants sit on another plate, by id.
+// needed for the 50/50 split
+export type OtherPlateCount = (plateId: string) => number;
+
+const noOtherPlates: OtherPlateCount = () => 0;
+
 export function countSatisfiesRule(
   count: number,
   rule: PlateCountRule | undefined,
   totalPlayers: number,
+  otherCount: OtherPlateCount = noOtherPlates,
 ): boolean {
   if (!rule) return count >= 1;
   switch (rule.mode) {
@@ -28,6 +35,12 @@ export function countSatisfiesRule(
       return count > 0 && count % 2 === 0;
     case "allPlayers":
       return totalPlayers > 0 && count === totalPlayers;
+    case "balance": {
+      const other = otherCount(rule.withPlateId);
+      const combined = count + other;
+      const diff = Math.abs(count - other);
+      return totalPlayers > 0 && combined === totalPlayers && diff <= (rule.maxDifference ?? 1);
+    }
   }
 }
 
@@ -35,9 +48,10 @@ export function evaluatePlate(
   occupants: PlateOccupant[],
   plate: PressurePlate,
   totalPlayers = 0,
+  otherCount: OtherPlateCount = noOtherPlates,
 ): boolean {
   const matching = occupants.filter((occupant) => occupantMatchesFilter(occupant, plate.filter));
-  return countSatisfiesRule(matching.length, plate.count, totalPlayers);
+  return countSatisfiesRule(matching.length, plate.count, totalPlayers, otherCount);
 }
 
 export function plateCountLabel(rule?: PlateCountRule): string {
@@ -51,6 +65,8 @@ export function plateCountLabel(rule?: PlateCountRule): string {
       return "even";
     case "allPlayers":
       return "all";
+    case "balance":
+      return "50/50";
   }
 }
 
