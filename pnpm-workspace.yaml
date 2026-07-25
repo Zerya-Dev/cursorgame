@@ -9,3 +9,6 @@ blockExoticSubdeps: false
 allowBuilds:
   esbuild: true
   msgpackr-extract: false
+
+minimumReleaseAgeExclude:
+  - "postcss@8.5.23"
