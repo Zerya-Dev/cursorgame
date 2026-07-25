@@ -27,7 +27,7 @@ export interface ColorStation extends Obstacle {
   label: string;
 }
 
-const T = 40; // default wall thickness
+const T = 40; // just a constant...
 
 export const OBSTACLES: Obstacle[] = [
   // Outer walls

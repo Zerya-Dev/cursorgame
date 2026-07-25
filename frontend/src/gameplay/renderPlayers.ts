@@ -31,7 +31,7 @@ export class RenderPlayers {
       let remote = this.players.get(sessionId);
       if (!remote) {
         const cursor = this.scene.add.circle(player.x, player.y, this.radius, color);
-        cursor.setStrokeStyle(3, 0xffffff).setDepth(9);
+        // cursor.setStrokeStyle(3, 0xffffff).setDepth(9); REPLACEME with the sprite
         remote = {
           cursor,
           target: new Phaser.Math.Vector2(player.x, player.y),

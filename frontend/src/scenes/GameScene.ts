@@ -52,7 +52,6 @@ export class GameScene extends Phaser.Scene {
     this.renderPlayers = new RenderPlayers(this, this.radius);
 
     this.touchNavigation = window.matchMedia("(pointer: coarse)").matches;
-    if (!this.touchNavigation) this.input.setDefaultCursor("none");
 
     const startX = WORLD_WIDTH / 2;
     const startY = WORLD_HEIGHT / 2;
@@ -139,6 +138,7 @@ export class GameScene extends Phaser.Scene {
     if (locked !== this.pointerLocked) {
       this.pointerLocked = locked;
       this.updateHint(locked);
+      if (!this.touchNavigation) this.input.setDefaultCursor(locked ? "none" : "default");
       if (!locked) {
         this.pendingInput.set(0, 0);
         this.velocity.set(0, 0);
