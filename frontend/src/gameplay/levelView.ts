@@ -105,7 +105,7 @@ const BUTTON_STAGES = [
   { label: "the button remembers", fill: 0xb45136 },
   { label: "you are testing my patience", fill: 0x98453b },
   { label: "go on. finish what you started.", fill: 0x7d3d43 },
-  { label: "fine. have thirty balls.", fill: 0x6b6459 },
+  { label: "fine. good luck trying to clean this up.", fill: 0x6b6459 },
 ];
 
 export interface ButtonRuntime {
