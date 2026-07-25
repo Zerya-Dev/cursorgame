@@ -43,6 +43,9 @@ export class GameScene extends Phaser.Scene {
   private multiplayer?: MultiplayerClient;
   private remotePlayers = new Map<string, RemotePlayer>();
   private activeColorStation?: string;
+  private touchNavigation = false;
+  private touchPointerId?: number;
+  private previousTouch = new Phaser.Math.Vector2();
   private readonly radius = 12;
   private readonly sensitivity = 0.82;
   private readonly movementResponse = 14;
@@ -60,7 +63,8 @@ export class GameScene extends Phaser.Scene {
     this.drawLevel();
     this.buildGameplay();
 
-    this.input.setDefaultCursor("none");
+    this.touchNavigation = window.matchMedia("(pointer: coarse)").matches;
+    if (!this.touchNavigation) this.input.setDefaultCursor("none");
 
     const startX = WORLD_WIDTH / 2;
     const startY = WORLD_HEIGHT / 2;
@@ -81,17 +85,36 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(1000);
 
-    this.input.on("pointerdown", () => {
+    if (this.touchNavigation) this.updateHint();
+
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      if (this.touchNavigation) {
+        if (this.touchPointerId === undefined) {
+          this.touchPointerId = pointer.id;
+          this.previousTouch.set(pointer.x, pointer.y);
+        }
+        return;
+      }
       if (!this.input.mouse?.locked) {
         this.input.mouse?.requestPointerLock();
       }
     });
 
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+      if (this.touchNavigation && pointer.id === this.touchPointerId) {
+        this.pendingInput.x += pointer.x - this.previousTouch.x;
+        this.pendingInput.y += pointer.y - this.previousTouch.y;
+        this.previousTouch.set(pointer.x, pointer.y);
+        return;
+      }
       if (this.input.mouse?.locked) {
         this.pendingInput.x += pointer.movementX;
         this.pendingInput.y += pointer.movementY;
       }
+    });
+
+    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+      if (pointer.id === this.touchPointerId) this.touchPointerId = undefined;
     });
 
     this.input.keyboard?.on("keydown-ESC", () => this.input.mouse?.releasePointerLock());
@@ -118,7 +141,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, deltaMs: number) {
-    const locked = this.input.mouse?.locked ?? false;
+    const locked = this.touchNavigation || (this.input.mouse?.locked ?? false);
     if (locked !== this.pointerLocked) {
       this.pointerLocked = locked;
       this.updateHint(locked);
@@ -161,8 +184,6 @@ export class GameScene extends Phaser.Scene {
     state.players.forEach((player, sessionId) => {
       const color = this.parseColor(player.color);
       if (sessionId === localSessionId) {
-        this.localColor = color;
-        this.cursor.setFillStyle(color);
         return;
       }
       activePlayers.add(sessionId);
@@ -345,6 +366,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateHint(locked = this.input.mouse?.locked ?? false) {
+    if (this.touchNavigation) {
+      this.hint.setText("Swipe anywhere to move");
+      return;
+    }
     this.hint.setText(
       locked
         ? "Cursor caught — move the mouse (Esc to release)"
@@ -374,12 +399,17 @@ export class GameScene extends Phaser.Scene {
     const station = COLOR_STATIONS.find((candidate) => this.overlaps(candidate));
     if (station?.color === this.activeColorStation) return;
     this.activeColorStation = station?.color;
-    if (station) this.multiplayer?.setColor(station.color);
+    if (station) {
+      this.localColor = this.parseColor(station.color);
+      this.cursor.setFillStyle(this.localColor);
+      this.multiplayer?.setColor(station.color);
+    }
   }
 
   private overlaps(rect: ColorStation) {
-    const cx = Phaser.Math.Clamp(this.cursor.x, rect.x, rect.x + rect.width);
-    const cy = Phaser.Math.Clamp(this.cursor.y, rect.y, rect.y + rect.height);
+    const margin = 6;
+    const cx = Phaser.Math.Clamp(this.cursor.x, rect.x - margin, rect.x + rect.width + margin);
+    const cy = Phaser.Math.Clamp(this.cursor.y, rect.y - margin, rect.y + rect.height + margin);
     return (this.cursor.x - cx) ** 2 + (this.cursor.y - cy) ** 2 < this.radius ** 2;
   }
 
