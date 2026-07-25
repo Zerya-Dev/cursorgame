@@ -2,6 +2,9 @@ packages:
   - "frontend"
   - "backend"
 
+catalog:
+  "@colyseus/sdk": "0.17.21"
+
 # uWebSockets transport depends on the official GitHub package.
 blockExoticSubdeps: false
 
