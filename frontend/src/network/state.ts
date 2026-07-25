@@ -17,6 +17,12 @@ export interface PressurePlateState {
   active: boolean;
 }
 
+export interface ButtonState {
+  stage: number;
+  clicks: number;
+  target: number;
+}
+
 export interface EntityState {
   id: string;
   kind: string;
@@ -33,4 +39,5 @@ export interface RoomState {
   doors: MapSchema<DoorState>;
   plates: MapSchema<PressurePlateState>;
   entities: MapSchema<EntityState>;
+  button: ButtonState;
 }

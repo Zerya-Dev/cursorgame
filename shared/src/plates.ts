@@ -1,0 +1,67 @@
+import type { PlateCountRule, PlateFilter, PressurePlate } from "./level.js";
+
+export interface PlateOccupant {
+  /** "player" or an ENTITY_KINDS key */
+  entityKind: string;
+  color: string;
+}
+
+export function occupantMatchesFilter(occupant: PlateOccupant, filter?: PlateFilter): boolean {
+  if (!filter) return true;
+  if (filter.entityKind && occupant.entityKind !== filter.entityKind) return false;
+  if (filter.color && occupant.color.toLowerCase() !== filter.color.toLowerCase()) return false;
+  return true;
+}
+
+export function countSatisfiesRule(
+  count: number,
+  rule: PlateCountRule | undefined,
+  totalPlayers: number,
+): boolean {
+  if (!rule) return count >= 1;
+  switch (rule.mode) {
+    case "atLeast":
+      return count >= rule.value;
+    case "exact":
+      return count === rule.value;
+    case "even":
+      return count > 0 && count % 2 === 0;
+    case "allPlayers":
+      return totalPlayers > 0 && count === totalPlayers;
+  }
+}
+
+export function evaluatePlate(
+  occupants: PlateOccupant[],
+  plate: PressurePlate,
+  totalPlayers = 0,
+): boolean {
+  const matching = occupants.filter((occupant) => occupantMatchesFilter(occupant, plate.filter));
+  return countSatisfiesRule(matching.length, plate.count, totalPlayers);
+}
+
+export function plateCountLabel(rule?: PlateCountRule): string {
+  if (!rule) return "1+";
+  switch (rule.mode) {
+    case "atLeast":
+      return `${rule.value}+`;
+    case "exact":
+      return `x${rule.value}`;
+    case "even":
+      return "even";
+    case "allPlayers":
+      return "all";
+  }
+}
+
+export interface PlateRequirementLabel {
+  /** short human-readable requirement, e.g. "1+ x ball", "2 x any", "all x player" */
+  text: string;
+  /** hex color to show as a swatch, when the filter is color-restricted */
+  swatch?: string;
+}
+
+export function describePlateRequirement(plate: PressurePlate): PlateRequirementLabel {
+  const noun = plate.filter?.entityKind ?? "any";
+  return { text: `${plateCountLabel(plate.count)} x ${noun}`, swatch: plate.filter?.color };
+}

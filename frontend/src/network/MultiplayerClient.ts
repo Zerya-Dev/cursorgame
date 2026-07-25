@@ -5,6 +5,7 @@ import type { RoomState } from "./state";
 interface MultiplayerEvents {
   onState: (state: RoomState, sessionId: string) => void;
   onSpray: (x: number, y: number, angle: number, color: number) => void;
+  onButtonPress: () => void;
   onConnected: () => void;
   onDisconnected: () => void;
   onError: (error: unknown) => void;
@@ -32,6 +33,7 @@ export class MultiplayerClient {
       room.onMessage("spray", (message: { x: number; y: number; angle: number; color: number }) =>
         this.events.onSpray(message.x, message.y, message.angle, message.color),
       );
+      room.onMessage("buttonPress", () => this.events.onButtonPress());
       room.onLeave(() => {
         if (this.room !== room) return;
         this.room = undefined;
@@ -57,6 +59,10 @@ export class MultiplayerClient {
 
   spray(x: number, y: number, angle: number, color: number) {
     this.room?.send("spray", { x, y, angle, color });
+  }
+
+  pressButton() {
+    this.room?.send("pressButton", {});
   }
 
   async disconnect() {

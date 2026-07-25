@@ -9,7 +9,7 @@ import {
 import { createEntity } from "./entities/registry.js";
 import { Body } from "./entities/traits/Body.js";
 import { PlatePresser } from "./entities/traits/PlatePresser.js";
-import type { Rect, Sweep } from "@shared";
+import type { EntityDef, PlateOccupant, Rect, Sweep } from "@shared";
 import type { ServerEntity, TraitPhase } from "./entities/Entity.js";
 import type { MainRoomState } from "../rooms/schema/MainRoomState.js";
 
@@ -29,12 +29,29 @@ export class World {
     }
   }
 
-  pressesRect(rect: Rect): boolean {
-    return this.entities.some(
-      (entity) =>
-        entity.has(PlatePresser) &&
-        circleOverlapsRect(entity.schema.x, entity.schema.y, entity.schema.radius, rect),
-    );
+  spawnEntity(def: EntityDef, velocity?: { vx: number; vy: number }) {
+    const entity = createEntity(def);
+    if (velocity) {
+      const body = entity.get(Body);
+      if (body) {
+        body.vx = velocity.vx;
+        body.vy = velocity.vy;
+      }
+    }
+    this.state.entities.set(def.id, entity.schema);
+    this.entities.push(entity);
+  }
+
+  occupantsInRect(rect: Rect): PlateOccupant[] {
+    const occupants: PlateOccupant[] = [];
+    for (const entity of this.entities) {
+      if (!entity.has(PlatePresser)) continue;
+      const schema = entity.schema;
+      if (circleOverlapsRect(schema.x, schema.y, schema.radius, rect)) {
+        occupants.push({ entityKind: schema.kind, color: schema.color });
+      }
+    }
+    return occupants;
   }
 
   forgetPlayer(sessionId: string) {

@@ -12,11 +12,30 @@ export type Obstacle = Rect;
 
 export interface Door extends Rect {
   id: string;
+  /** once opened, stays open forever instead of re-locking when plates release */
+  permanent?: boolean;
 }
+
+export interface PlateFilter {
+  /** "player" restricts to players; an ENTITY_KINDS key (e.g. "ball") restricts to that kind; omitted = any presser */
+  entityKind?: string;
+  /** occupant's color must match (case-insensitive) */
+  color?: string;
+}
+
+export type PlateCountRule =
+  | { mode: "atLeast"; value: number }
+  | { mode: "exact"; value: number }
+  | { mode: "even" }
+  | { mode: "allPlayers" };
 
 export interface PressurePlate extends Rect {
   id: string;
   doorIds: string[];
+  /** what counts as an occupant; omitted = any presser */
+  filter?: PlateFilter;
+  /** requirement on the number of matching occupants; omitted = at least 1 */
+  count?: PlateCountRule;
 }
 
 export interface ColorStation extends Rect {
@@ -41,6 +60,11 @@ const T = 40; // wall thickness
 const LOBBY_TOP = CORRIDOR_HEIGHT;
 const CORRIDOR_LEFT = (WORLD_WIDTH - CORRIDOR_WIDTH) / 2;
 const CORRIDOR_RIGHT = CORRIDOR_LEFT + CORRIDOR_WIDTH;
+
+// A full-width room at the far end of the corridor (the top of the map), carved out by
+// starting the corridor's flanking walls below it instead of right at the top wall.
+const ROOM_HEIGHT = 500;
+const ROOM_BOTTOM = T + ROOM_HEIGHT;
 
 export const SPAWN_POINT = { x: WORLD_WIDTH / 2, y: LOBBY_TOP + LOBBY_HEIGHT / 2 };
 
@@ -69,28 +93,125 @@ export const OBSTACLES: Obstacle[] = [
   { x: 0, y: 0, width: T, height: WORLD_HEIGHT },
   { x: WORLD_WIDTH - T, y: 0, width: T, height: WORLD_HEIGHT },
 
-  // Corridor funnel: narrows the lobby below into the corridor above.
-  { x: T, y: T, width: CORRIDOR_LEFT - T, height: LOBBY_TOP - T },
-  { x: CORRIDOR_RIGHT, y: T, width: WORLD_WIDTH - T - CORRIDOR_RIGHT, height: LOBBY_TOP - T },
+  // Corridor funnel: narrows the room at the top into the corridor, which then
+  // widens back out into the lobby below.
+  { x: T, y: ROOM_BOTTOM, width: CORRIDOR_LEFT - T, height: LOBBY_TOP - ROOM_BOTTOM },
+  {
+    x: CORRIDOR_RIGHT,
+    y: ROOM_BOTTOM,
+    width: WORLD_WIDTH - T - CORRIDOR_RIGHT,
+    height: LOBBY_TOP - ROOM_BOTTOM,
+  },
 
   { x: 40, y: 2000, width: 200, height: LOBBY_TOP - T },
   { x: 1400, y: 2000, width: 200, height: LOBBY_TOP - T },
 ];
 
-export const DOORS: Door[] = [{ x: 640, y: 1970, width: 320, height: 30, id: "0" }];
+export const DOORS: Door[] = [{ x: 680, y: 1970, width: 320, height: 30, id: "0" }];
 
-// 10 lobby plates, 5 per side. Not linked to any door yet.
+// 10 lobby plates, 5 per side; door "0" needs every single one filled by exactly
+// one player, i.e. the whole party has to find a slot before it opens.
 export const PLATES: PressurePlate[] = [
-  { id: "plate-lobby-left-1", x: 350, y: 2100, width: 100, height: 100, doorIds: [] },
-  { id: "plate-lobby-left-2", x: 350, y: 2280, width: 100, height: 100, doorIds: [] },
-  { id: "plate-lobby-left-3", x: 350, y: 2460, width: 100, height: 100, doorIds: [] },
-  { id: "plate-lobby-left-4", x: 350, y: 2640, width: 100, height: 100, doorIds: [] },
-  { id: "plate-lobby-left-5", x: 350, y: 2820, width: 100, height: 100, doorIds: [] },
-  { id: "plate-lobby-right-1", x: 1150, y: 2100, width: 100, height: 100, doorIds: [] },
-  { id: "plate-lobby-right-2", x: 1150, y: 2280, width: 100, height: 100, doorIds: [] },
-  { id: "plate-lobby-right-3", x: 1150, y: 2460, width: 100, height: 100, doorIds: [] },
-  { id: "plate-lobby-right-4", x: 1150, y: 2640, width: 100, height: 100, doorIds: [] },
-  { id: "plate-lobby-right-5", x: 1150, y: 2820, width: 100, height: 100, doorIds: [] },
+  {
+    id: "plate-lobby-left-1",
+    x: 350,
+    y: 2100,
+    width: 100,
+    height: 100,
+    doorIds: ["0"],
+    filter: { entityKind: "player" },
+    count: { mode: "exact", value: 1 },
+  },
+  {
+    id: "plate-lobby-left-2",
+    x: 350,
+    y: 2280,
+    width: 100,
+    height: 100,
+    doorIds: ["0"],
+    filter: { entityKind: "player" },
+    count: { mode: "exact", value: 1 },
+  },
+  {
+    id: "plate-lobby-left-3",
+    x: 350,
+    y: 2460,
+    width: 100,
+    height: 100,
+    doorIds: ["0"],
+    filter: { entityKind: "player" },
+    count: { mode: "exact", value: 1 },
+  },
+  {
+    id: "plate-lobby-left-4",
+    x: 350,
+    y: 2640,
+    width: 100,
+    height: 100,
+    doorIds: ["0"],
+    filter: { entityKind: "player" },
+    count: { mode: "exact", value: 1 },
+  },
+  {
+    id: "plate-lobby-left-5",
+    x: 350,
+    y: 2820,
+    width: 100,
+    height: 100,
+    doorIds: ["0"],
+    filter: { entityKind: "player" },
+    count: { mode: "exact", value: 1 },
+  },
+  {
+    id: "plate-lobby-right-1",
+    x: 1150,
+    y: 2100,
+    width: 100,
+    height: 100,
+    doorIds: ["0"],
+    filter: { entityKind: "player" },
+    count: { mode: "exact", value: 1 },
+  },
+  {
+    id: "plate-lobby-right-2",
+    x: 1150,
+    y: 2280,
+    width: 100,
+    height: 100,
+    doorIds: ["0"],
+    filter: { entityKind: "player" },
+    count: { mode: "exact", value: 1 },
+  },
+  {
+    id: "plate-lobby-right-3",
+    x: 1150,
+    y: 2460,
+    width: 100,
+    height: 100,
+    doorIds: ["0"],
+    filter: { entityKind: "player" },
+    count: { mode: "exact", value: 1 },
+  },
+  {
+    id: "plate-lobby-right-4",
+    x: 1150,
+    y: 2640,
+    width: 100,
+    height: 100,
+    doorIds: ["0"],
+    filter: { entityKind: "player" },
+    count: { mode: "exact", value: 1 },
+  },
+  {
+    id: "plate-lobby-right-5",
+    x: 1150,
+    y: 2820,
+    width: 100,
+    height: 100,
+    doorIds: ["0"],
+    filter: { entityKind: "player" },
+    count: { mode: "exact", value: 1 },
+  },
 ];
 
 export const DOOR_RECTS: Record<string, Rect> = Object.fromEntries(
@@ -115,6 +236,23 @@ export const WORLD_TEXTS: WorldText[] = [
   { x: 552, y: 2100, text: "Hellllo there!", size: 45 },
   { x: 806, y: 2178, text: "Pick a color!", size: 30 },
 ];
+
+export interface ButtonDef extends Rect {}
+
+// centered in the room at the top of the corridor, past door "0" and the plate puzzle
+export const BUTTON: ButtonDef = {
+  x: WORLD_WIDTH / 2 - 110,
+  y: T + ROOM_HEIGHT / 2 - 70,
+  width: 220,
+  height: 140,
+};
+
+// spec calls for 1000 combined clicks; using 20 for now per request while testing
+export const BUTTON_CLICK_TARGET = 20;
+
+export const BALL_SPAWN_COLORS = ["#ef4444", "#f97316", "#facc15", "#4ade80", "#60a5fa", "#a78bfa"];
+
+export const BALL_SPAWN_COUNT = 30;
 
 export const ENTITY_KINDS: Record<string, EntityKindConfig> = {
   ball: {

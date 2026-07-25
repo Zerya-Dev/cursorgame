@@ -1,18 +1,28 @@
 import Phaser from "phaser";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "@shared";
 import {
+  BUTTON,
   COLOR_STATIONS,
   LAVA_ZONES,
   OBSTACLES,
   PLAYER_RADIUS,
   SPAWN_POINT,
   WORLD_TEXTS,
+  circleOverlapsRect,
 } from "@shared";
 import type { Rect } from "@shared";
 import { moveAndCollide } from "../gameplay/collision";
 import { findColorStation, parseColor } from "../gameplay/color";
-import { buildInteractables, drawLevel } from "../gameplay/levelView";
-import type { DoorRuntime, PlateRuntime } from "../gameplay/levelView";
+import {
+  animateButtonPress,
+  animateDoor,
+  animatePlate,
+  buildButton,
+  buildInteractables,
+  drawLevel,
+  updateButtonView,
+} from "../gameplay/levelView";
+import type { ButtonRuntime, DoorRuntime, PlateRuntime } from "../gameplay/levelView";
 import { buildLavaZones, findLavaZone } from "../gameplay/lava";
 import { buildWorldTexts } from "../gameplay/worldText";
 import { RenderPlayers } from "../gameplay/renderPlayers";
@@ -36,6 +46,7 @@ export class GameScene extends Phaser.Scene {
   private coordsLabel!: Phaser.GameObjects.Text;
   private doors: DoorRuntime[] = [];
   private plates: PlateRuntime[] = [];
+  private button!: ButtonRuntime;
   private multiplayer?: MultiplayerClient;
   private renderPlayers!: RenderPlayers;
   private entities = new Map<string, EntityView>();
@@ -76,6 +87,7 @@ export class GameScene extends Phaser.Scene {
     this.plates = plates;
     buildLavaZones(this, LAVA_ZONES);
     buildWorldTexts(this, WORLD_TEXTS);
+    this.button = buildButton(this);
     this.renderPlayers = new RenderPlayers(this);
 
     this.touchNavigation = window.matchMedia("(pointer: coarse)").matches;
@@ -118,6 +130,14 @@ export class GameScene extends Phaser.Scene {
         this.sprayStartedAt = this.time.now;
         return;
       }
+      if (
+        (this.touchNavigation || this.input.mouse?.locked) &&
+        circleOverlapsRect(this.cursor.x, this.cursor.y, this.radius, BUTTON)
+      ) {
+        animateButtonPress(this, this.button);
+        this.multiplayer?.pressButton();
+        return;
+      }
       if (this.touchNavigation) {
         if (this.touchPointerId === undefined) {
           this.touchPointerId = pointer.id;
@@ -157,6 +177,7 @@ export class GameScene extends Phaser.Scene {
     this.multiplayer = new MultiplayerClient({
       onState: (state, sessionId) => this.syncState(state, sessionId),
       onSpray: (x, y, angle, color) => this.sprayLayer.spray(this.time.now, x, y, angle, color),
+      onButtonPress: () => animateButtonPress(this, this.button),
       onConnected: () => this.hint.setText("Connected - click to catch the cursor"),
       onDisconnected: () => {
         this.renderPlayers.clear();
@@ -279,14 +300,20 @@ export class GameScene extends Phaser.Scene {
       const runtime = this.doors.find(({ def }) => def.id === id);
       if (!runtime) return;
       runtime.solid = !door.open;
-      runtime.rect.setAlpha(door.open ? 0.18 : 1);
+      if (runtime.open !== door.open) {
+        runtime.open = door.open;
+        animateDoor(this, runtime, door.open);
+      }
     });
     state.plates.forEach((plate, id) => {
       const runtime = this.plates.find(({ def }) => def.id === id);
       if (!runtime) return;
-      runtime.active = plate.active;
-      runtime.rect.setFillStyle(plate.active ? 0x4ade80 : 0x9a6a2a);
+      if (runtime.active !== plate.active) {
+        runtime.active = plate.active;
+        animatePlate(this, runtime, plate.active);
+      }
     });
+    updateButtonView(this.button, state.button.stage);
 
     const activeEntities = new Set<string>();
     state.entities.forEach((entity, id) => {

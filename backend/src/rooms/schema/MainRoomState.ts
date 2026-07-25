@@ -1,5 +1,5 @@
 import { MapSchema, Schema, type } from "@colyseus/schema";
-import { Door, Player, PressurePlate } from "./GeneralSchemas.js";
+import { ButtonState, Door, Player, PressurePlate } from "./GeneralSchemas.js";
 
 export class Entity extends Schema {
   @type("string") id = "";
@@ -17,4 +17,5 @@ export class MainRoomState extends Schema {
   @type({ map: Door }) doors = new MapSchema<Door>();
   @type({ map: PressurePlate }) plates = new MapSchema<PressurePlate>();
   @type({ map: Entity }) entities = new MapSchema<Entity>();
+  @type(ButtonState) button = new ButtonState();
 }

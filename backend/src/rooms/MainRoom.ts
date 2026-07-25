@@ -3,25 +3,34 @@ import { MainRoomState } from "./schema/MainRoomState.js";
 import { Door, Player, PressurePlate } from "./schema/GeneralSchemas.js";
 import { World } from "../game/World.js";
 import {
+  BALL_SPAWN_COLORS,
+  BALL_SPAWN_COUNT,
+  BUTTON,
+  BUTTON_CLICK_TARGET,
   COLOR_STATIONS,
   DOOR_IDS,
+  DOORS,
   PLATES,
   PLAYER_RADIUS,
   SPAWN_POINT,
   WORLD_HEIGHT,
   WORLD_WIDTH,
   circleOverlapsRect,
+  evaluatePlate,
 } from "@shared";
-import type { Rect } from "@shared";
+import type { PlateOccupant, PressurePlate as PlateDef, Rect } from "@shared";
 
-const DOOR_HOLD_MS = 1;
+const PERMANENT_DOORS = new Set(DOORS.filter((door) => door.permanent).map((door) => door.id));
+
+const DOOR_HOLD_MS = 600;
 const TICK_MS = 20;
 
 export class MainRoom extends Room {
-  maxClients = 8;
+  maxClients = 10; // matches the 10 lobby plates so every player can claim a slot
   patchRate = 20;
   state = new MainRoomState();
   private doorOpenUntil = new Map<string, number>();
+  private unlockedDoors = new Set<string>();
   private world = new World(this.state);
 
   messages = {
@@ -71,6 +80,23 @@ export class MainRoom extends Room {
         { except: client },
       );
     },
+    pressButton: (client: Client) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+      const button = this.state.button;
+      if (button.stage === 0) {
+        button.stage = 1;
+        this.broadcast("buttonPress", {}, { except: client });
+        return;
+      }
+      if (button.stage !== 1) return;
+      button.clicks += 1;
+      this.broadcast("buttonPress", {}, { except: client });
+      if (button.clicks >= button.target) {
+        button.stage = 2;
+        this.spawnPrankBalls();
+      }
+    },
   };
 
   onCreate() {
@@ -84,6 +110,7 @@ export class MainRoom extends Room {
       plate.id = definition.id;
       this.state.plates.set(definition.id, plate);
     }
+    this.state.button.target = BUTTON_CLICK_TARGET;
     this.setSimulationInterval(() => {
       this.updateGameplay();
       this.world.update(TICK_MS / 1000);
@@ -110,32 +137,70 @@ export class MainRoom extends Room {
     console.log("room", this.roomId, "disposing...");
   }
 
+  private spawnPrankBalls() {
+    const centerX = BUTTON.x + BUTTON.width / 2;
+    const centerY = BUTTON.y + BUTTON.height / 2;
+    for (let i = 0; i < BALL_SPAWN_COUNT; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 20 + Math.random() * 60;
+      const x = Math.max(60, Math.min(WORLD_WIDTH - 60, centerX + Math.cos(angle) * distance));
+      const y = Math.max(60, Math.min(WORLD_HEIGHT - 60, centerY + Math.sin(angle) * distance));
+      const speed = 650 + Math.random() * 450;
+      this.world.spawnEntity(
+        {
+          kind: "ball",
+          id: `prank-ball-${i}`,
+          x,
+          y,
+          radius: 16,
+          color: BALL_SPAWN_COLORS[i % BALL_SPAWN_COLORS.length],
+        },
+        { vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed },
+      );
+    }
+  }
+
   private playerOverlaps(player: Player, rect: Rect) {
     return circleOverlapsRect(player.x, player.y, PLAYER_RADIUS, rect);
   }
 
-  private plateIsPressed(definition: Rect) {
+  private plateOccupants(definition: Rect): PlateOccupant[] {
+    const occupants: PlateOccupant[] = [];
     for (const player of this.state.players.values()) {
-      if (this.playerOverlaps(player, definition)) return true;
+      if (this.playerOverlaps(player, definition)) {
+        occupants.push({ entityKind: "player", color: player.color });
+      }
     }
-    return this.world.pressesRect(definition);
+    occupants.push(...this.world.occupantsInRect(definition));
+    return occupants;
   }
 
   private updateGameplay() {
     const now = Date.now();
-    const heldDoors = new Set<string>();
+    const totalPlayers = this.state.players.size;
+    const activePlates = new Map<string, boolean>();
 
     for (const definition of PLATES) {
-      const active = this.plateIsPressed(definition);
+      const active = evaluatePlate(this.plateOccupants(definition), definition, totalPlayers);
+      activePlates.set(definition.id, active);
       const plate = this.state.plates.get(definition.id);
       if (plate) plate.active = active;
-      if (active) for (const doorId of definition.doorIds) heldDoors.add(doorId);
     }
 
     for (const doorId of DOOR_IDS) {
-      if (heldDoors.has(doorId)) this.doorOpenUntil.set(doorId, now + DOOR_HOLD_MS);
+      const gatingPlates = PLATES.filter((definition: PlateDef) =>
+        definition.doorIds.includes(doorId),
+      );
+      const satisfied =
+        gatingPlates.length > 0 && gatingPlates.every((plate) => activePlates.get(plate.id));
+      if (satisfied) {
+        this.doorOpenUntil.set(doorId, now + DOOR_HOLD_MS);
+        if (PERMANENT_DOORS.has(doorId)) this.unlockedDoors.add(doorId);
+      }
       const door = this.state.doors.get(doorId);
-      if (door) door.open = now < (this.doorOpenUntil.get(doorId) ?? 0);
+      if (door) {
+        door.open = this.unlockedDoors.has(doorId) || now < (this.doorOpenUntil.get(doorId) ?? 0);
+      }
     }
   }
 }
