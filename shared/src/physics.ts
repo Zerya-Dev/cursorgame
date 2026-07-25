@@ -99,7 +99,15 @@ export function applySweepPush(
   transfer: number,
 ): void {
   const minDist = pusherRadius + body.radius;
-  const hit = sweptCircleHit(sweep.fromX, sweep.fromY, sweep.toX, sweep.toY, body.x, body.y, minDist);
+  const hit = sweptCircleHit(
+    sweep.fromX,
+    sweep.fromY,
+    sweep.toX,
+    sweep.toY,
+    body.x,
+    body.y,
+    minDist,
+  );
   if (!hit) return;
 
   const approachSpeed = (sweep.vx - body.vx) * hit.normalX + (sweep.vy - body.vy) * hit.normalY;
@@ -111,7 +119,11 @@ export function applySweepPush(
   pushCircleOutOfPoint(body, sweep.toX, sweep.toY, minDist);
 }
 
-export function applyFriction(body: { vx: number; vy: number }, friction: number, dt: number): void {
+export function applyFriction(
+  body: { vx: number; vy: number },
+  friction: number,
+  dt: number,
+): void {
   const decay = Math.exp(-friction * dt);
   body.vx *= decay;
   body.vy *= decay;

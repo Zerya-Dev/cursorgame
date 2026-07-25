@@ -2,21 +2,30 @@
   "name": "cursorgame",
   "version": "1.0.0",
   "description": "",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "pnpm --parallel --filter cursorgame-server --filter cursorgame-frontend dev",
     "docker:build": "docker build -t cursorgame .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check ."
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "devDependencies": {
+    "oxfmt": "^0.60.0",
+    "oxlint": "^1.75.0",
+    "oxlint-tsgolint": "^7.0.2001"
+  },
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
       "version": "11.17.0",
       "onFail": "download"
     }
-  },
-  "type": "module"
+  }
 }

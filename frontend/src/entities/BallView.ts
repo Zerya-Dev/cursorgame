@@ -87,8 +87,7 @@ export class BallView implements EntityView {
     }
 
     this.container.setPosition(this.predicted.x, this.predicted.y);
-    this.container.rotation +=
-      ((this.predicted.vx + this.predicted.vy) * dt) / (this.radius * 2);
+    this.container.rotation += ((this.predicted.vx + this.predicted.vy) * dt) / (this.radius * 2);
   }
 
   destroy() {

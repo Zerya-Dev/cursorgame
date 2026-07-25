@@ -1,6 +1,6 @@
 # 🖱️ Mouse Game
 
-**Mouse Game** is an MMO game created for [Hack Club Horizons Europa](https://horizons.hackclub.com/). Players must cooperate using their *computer mice* to complete some silly challenges together.
+**Mouse Game** is an MMO game created for [Hack Club Horizons Europa](https://horizons.hackclub.com/). Players must cooperate using their _computer mice_ to complete some silly challenges together.
 
 ## Background
 

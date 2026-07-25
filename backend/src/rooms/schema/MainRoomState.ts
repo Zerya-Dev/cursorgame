@@ -1,5 +1,5 @@
 import { MapSchema, Schema, type } from "@colyseus/schema";
-import {Door, Player, PressurePlate} from "./GeneralSchemas.js";
+import { Door, Player, PressurePlate } from "./GeneralSchemas.js";
 
 export class Entity extends Schema {
   @type("string") id = "";

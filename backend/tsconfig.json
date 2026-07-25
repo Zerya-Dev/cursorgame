@@ -6,13 +6,8 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowJs": true,
-    "strictNullChecks": false,
     "experimentalDecorators": true,
     "useDefineForClassFields": false
   },
-  "include": [
-    "src",
-    "test",
-    "../shared/src"
-  ]
+  "include": ["src", "test", "../shared/src"]
 }
