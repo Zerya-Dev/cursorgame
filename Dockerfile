@@ -28,7 +28,7 @@ COPY --from=builder --chown=node:node /app/frontend/dist ./frontend/dist
 
 USER node
 EXPOSE 2567
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD node -e "fetch('http://localhost:' + process.env.PORT + '/hi').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
+#HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+#  CMD node -e "fetch('http://localhost:' + process.env.PORT + '/hi').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
 
 CMD ["node", "backend/build/index.js"]
