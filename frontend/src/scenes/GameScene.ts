@@ -1,6 +1,13 @@
 import Phaser from "phaser";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "@shared";
-import { COLOR_STATIONS, LAVA_ZONES, OBSTACLES, PLAYER_RADIUS, SPAWN_POINT, WORLD_TEXTS } from "@shared";
+import {
+  COLOR_STATIONS,
+  LAVA_ZONES,
+  OBSTACLES,
+  PLAYER_RADIUS,
+  SPAWN_POINT,
+  WORLD_TEXTS,
+} from "@shared";
 import type { Rect } from "@shared";
 import { moveAndCollide } from "../gameplay/collision";
 import { findColorStation, parseColor } from "../gameplay/color";

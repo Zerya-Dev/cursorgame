@@ -77,9 +77,7 @@ export const OBSTACLES: Obstacle[] = [
   { x: 1400, y: 2000, width: 200, height: LOBBY_TOP - T },
 ];
 
-export const DOORS: Door[] = [
-	{x: 640, y: 1970, width: 320, height: 30, id: '0'}
-];
+export const DOORS: Door[] = [{ x: 640, y: 1970, width: 320, height: 30, id: "0" }];
 
 // 10 lobby plates, 5 per side. Not linked to any door yet.
 export const PLATES: PressurePlate[] = [
