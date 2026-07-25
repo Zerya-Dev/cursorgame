@@ -48,8 +48,6 @@ export function buildSlides(scene: Phaser.Scene, depth: number) {
       floor.fillCircle(p.x, p.y, CHUTE / 2);
     }
 
-    buildChevrons(scene, points, depth + 2);
-
     // the mouth, so it's obvious where you get on
     const { entry } = slide;
     scene.add
@@ -71,40 +69,4 @@ function strokePath(g: Phaser.GameObjects.Graphics, points: Array<{ x: number; y
   g.moveTo(points[0].x, points[0].y);
   for (let i = 1; i < points.length; i++) g.lineTo(points[i].x, points[i].y);
   g.strokePath();
-}
-
-/** arrows marching down the chute so the direction of travel is unmistakable */
-function buildChevrons(
-  scene: Phaser.Scene,
-  points: Array<{ x: number; y: number }>,
-  depth: number,
-) {
-  const spacing = 150;
-  let index = 0;
-
-  for (let i = 0; i < points.length - 1; i++) {
-    const from = points[i];
-    const to = points[i + 1];
-    const angle = Math.atan2(to.y - from.y, to.x - from.x);
-    const length = Math.hypot(to.x - from.x, to.y - from.y);
-
-    for (let travelled = spacing / 2; travelled < length; travelled += spacing) {
-      const arrow = scene.add
-        .image(from.x + Math.cos(angle) * travelled, from.y + Math.sin(angle) * travelled, "arrow")
-        .setDisplaySize(CHUTE * 0.62, CHUTE * 0.62)
-        .setRotation(angle + Math.PI / 2)
-        .setAlpha(0.7)
-        .setDepth(depth);
-
-      scene.tweens.add({
-        targets: arrow,
-        alpha: 0.2,
-        duration: 700,
-        delay: (index++ % 6) * 110,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
-    }
-  }
 }

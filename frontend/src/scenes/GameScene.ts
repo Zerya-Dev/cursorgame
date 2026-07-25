@@ -7,6 +7,7 @@ import {
   OBSTACLES,
   PLAYER_RADIUS,
   SPAWN_POINT,
+  TRASH_PLATE_ID,
   WORLD_TEXTS,
   circleOverlapsRect,
 } from "@shared";
@@ -21,6 +22,7 @@ import {
   buildInteractables,
   drawLevel,
   updateButtonView,
+  updateCollectorProgress,
 } from "../gameplay/levelView";
 import type { ButtonRuntime, DoorRuntime, PlateRuntime } from "../gameplay/levelView";
 import { buildLavaZones, findLavaZone } from "../gameplay/lava";
@@ -409,7 +411,7 @@ export class GameScene extends Phaser.Scene {
         animatePlate(this, runtime, plate.active);
       }
     });
-    updateButtonView(this.button, state.button.stage);
+    updateButtonView(this.button, state.button.stage, state.button.clicks, state.button.target);
 
     const activeEntities = new Set<string>();
     state.entities.forEach((entity, id) => {
@@ -426,6 +428,15 @@ export class GameScene extends Phaser.Scene {
         view.destroy();
         this.entities.delete(id);
       }
+    }
+
+    const collector = this.plates.find(({ def }) => def.id === TRASH_PLATE_ID);
+    if (collector) {
+      let remaining = 0;
+      state.entities.forEach((entity) => {
+        if (entity.id.startsWith("prank-ball-")) remaining++;
+      });
+      updateCollectorProgress(collector, remaining, state.button.stage === 2);
     }
   }
 

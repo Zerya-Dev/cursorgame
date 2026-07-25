@@ -39,7 +39,13 @@ export function countSatisfiesRule(
       const other = otherCount(rule.withPlateId);
       const combined = count + other;
       const diff = Math.abs(count - other);
-      return totalPlayers > 0 && combined === totalPlayers && diff <= (rule.maxDifference ?? 1);
+      const minimumParticipants = Math.ceil(totalPlayers * 0.8);
+      return (
+        count > 0 &&
+        other > 0 &&
+        combined >= minimumParticipants &&
+        diff <= (rule.maxDifference ?? 1)
+      );
     }
   }
 }

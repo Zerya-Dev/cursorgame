@@ -1,13 +1,17 @@
 import Phaser from "phaser";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../config";
 import {
+  BALL_SPAWN_COUNT,
   BUTTON,
   CHEESE,
   COLOR_STATIONS,
   DECORATIONS,
   DOORS,
+  FOOTBALL_PITCH,
+  MAIN_LOBBY_BOTTOM,
   OBSTACLES,
   PLATES,
+  TRASH_PLATE_ID,
   plateCountLabel,
 } from "@shared";
 import type { Door, PressurePlate, Rect } from "@shared";
@@ -64,6 +68,17 @@ export interface PlateRuntime {
   /** absent when the plate has no entityKind filter, i.e. anything counts */
   icon?: Phaser.GameObjects.Image;
   countLabel: Phaser.GameObjects.Text;
+  progress?: {
+    fill: Phaser.GameObjects.Rectangle;
+    width: number;
+  };
+}
+
+export function updateCollectorProgress(runtime: PlateRuntime, remaining: number, active: boolean) {
+  if (!runtime.progress) return;
+  const collected = active ? BALL_SPAWN_COUNT - remaining : 0;
+  const ratio = Phaser.Math.Clamp(collected / BALL_SPAWN_COUNT, 0, 1);
+  runtime.progress.fill.width = runtime.progress.width * ratio;
 }
 
 export function animatePlate(scene: Phaser.Scene, runtime: PlateRuntime, active: boolean) {
@@ -85,12 +100,17 @@ export function animatePlate(scene: Phaser.Scene, runtime: PlateRuntime, active:
 
 const BUTTON_STAGES = [
   { label: "do NOT press this", fill: ACCENT_DANGER },
-  { label: "seriously, stop", fill: 0xd08a3a },
-  { label: "now look what you did", fill: 0x6b6459 },
+  { label: "I asked you politely", fill: 0xd96f32 },
+  { label: "that was not a suggestion", fill: 0xc95f32 },
+  { label: "the button remembers", fill: 0xb45136 },
+  { label: "you are testing my patience", fill: 0x98453b },
+  { label: "go on. finish what you started.", fill: 0x7d3d43 },
+  { label: "fine. have thirty balls.", fill: 0x6b6459 },
 ];
 
 export interface ButtonRuntime {
   stage: number;
+  messageIndex: number;
   rect: Phaser.GameObjects.Rectangle;
   label: Phaser.GameObjects.Text;
   pressTween?: Phaser.Tweens.Tween;
@@ -117,7 +137,7 @@ export function buildButton(scene: Phaser.Scene): ButtonRuntime {
     .setOrigin(0.5)
     .setDepth(6);
 
-  return { stage: -1, rect, label };
+  return { stage: -1, messageIndex: -1, rect, label };
 }
 
 export function animateButtonPress(scene: Phaser.Scene, runtime: ButtonRuntime) {
@@ -134,10 +154,22 @@ export function animateButtonPress(scene: Phaser.Scene, runtime: ButtonRuntime) 
   });
 }
 
-export function updateButtonView(runtime: ButtonRuntime, stage: number) {
-  if (runtime.stage === stage) return;
+export function updateButtonView(
+  runtime: ButtonRuntime,
+  stage: number,
+  clicks: number,
+  target: number,
+) {
+  const messageIndex =
+    stage === 0
+      ? 0
+      : stage === 2
+        ? BUTTON_STAGES.length - 1
+        : 1 + Math.min(BUTTON_STAGES.length - 3, Math.floor((clicks / Math.max(1, target)) * 5));
+  if (runtime.stage === stage && runtime.messageIndex === messageIndex) return;
   runtime.stage = stage;
-  const { label, fill } = BUTTON_STAGES[stage] ?? BUTTON_STAGES[BUTTON_STAGES.length - 1];
+  runtime.messageIndex = messageIndex;
+  const { label, fill } = BUTTON_STAGES[messageIndex];
   runtime.label.setText(label);
   runtime.rect.setFillStyle(fill, 1);
 }
@@ -283,9 +315,10 @@ function stampWallCrossings(scene: Phaser.Scene, segments: WallSegment[]) {
 }
 
 export function drawLevel(scene: Phaser.Scene) {
-  // paper grid over the whole world; obstacles paint back over it below
+  // The camera may follow the slide south of the dungeon, but only the actual
+  // rooms receive floor tiles. The extended world below remains blank paper.
   scene.add
-    .tileSprite(0, 0, WORLD_WIDTH, WORLD_HEIGHT, "floor_cell")
+    .tileSprite(0, 0, WORLD_WIDTH, MAIN_LOBBY_BOTTOM, "floor_cell")
     .setOrigin(0, 0)
     .setTileScale(FLOOR_TILE / 64)
     // floor_cell.png only carries its top/left border (the right/bottom are
@@ -298,6 +331,19 @@ export function drawLevel(scene: Phaser.Scene) {
   const solid = scene.add.graphics().setDepth(DEPTH_SOLID);
   solid.fillStyle(PAPER, 1);
   for (const o of OBSTACLES) solid.fillRect(o.x, o.y, o.width, o.height);
+
+  const pitch = scene.add.graphics().setDepth(DEPTH_DECOR);
+  const { x, y, width, height } = FOOTBALL_PITCH;
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  pitch.lineStyle(5, INK, 0.42);
+  pitch.strokeRoundedRect(x, y, width, height, 12);
+  pitch.lineBetween(x, centerY, x + width, centerY);
+  pitch.strokeCircle(centerX, centerY, 42);
+  pitch.strokeRect(centerX - 55, y, 110, 58);
+  pitch.strokeRect(centerX - 55, y + height - 58, 110, 58);
+  pitch.fillStyle(INK, 0.42);
+  pitch.fillCircle(centerX, centerY, 5);
 
   const cheese = scene.add
     .image(CHEESE.x, CHEESE.y, "cheese")
@@ -386,27 +432,51 @@ export function buildInteractables(scene: Phaser.Scene) {
     const iconSize = Math.min(def.width, def.height) * 0.3;
     const rowY = def.y + def.height - iconSize * 0.75;
     const iconKey = plateIcon(def.filter?.entityKind);
+    const hasIcon = Boolean(iconKey);
 
     let icon: Phaser.GameObjects.Image | undefined;
     if (iconKey && typeof iconKey === "string") {
-      icon = scene.add
-        .image(cx - iconSize * 0.55, rowY, iconKey)
-        .setDisplaySize(iconSize, iconSize)
-        .setDepth(3);
-      if (def.filter?.color) icon.setTint(parseColor(def.filter.color));
+      const iconX = cx - iconSize * 0.55;
+      if (def.filter?.color) {
+        const radius = iconSize * 0.3;
+        const marker = scene.add.graphics().setDepth(3);
+        marker.fillStyle(parseColor(def.filter.color), 1);
+        marker.fillCircle(iconX, rowY, radius);
+        marker.lineStyle(3, INK, 1);
+        marker.strokeCircle(iconX, rowY, radius);
+        marker.lineBetween(iconX, rowY - radius * 0.8, iconX, rowY + radius * 1.35);
+      } else {
+        icon = scene.add.image(iconX, rowY, iconKey).setDisplaySize(iconSize, iconSize).setDepth(3);
+      }
     }
 
     // Without an icon (anything counts) the count reads alone, centred.
+    const labelText = def.countLabel ?? plateCountLabel(def.count);
+    const labelScale = labelText.length > 3 ? 0.55 : 0.95;
     const countLabel = scene.add
-      .text(icon ? cx + iconSize * 0.35 : cx, rowY, plateCountLabel(def.count), {
+      .text(hasIcon ? cx + iconSize * 0.35 : cx, rowY, labelText, {
         fontFamily: FONT_HAND,
-        fontSize: `${Math.round(iconSize * 0.95)}px`,
+        fontSize: `${Math.round(iconSize * labelScale)}px`,
         color: INK_SOFT_CSS,
       })
-      .setOrigin(icon ? 0 : 0.5, 0.5)
+      .setOrigin(hasIcon ? 0 : 0.5, 0.5)
       .setDepth(3);
 
-    return { def, active: false, glow, plate, icon, countLabel };
+    let progress: PlateRuntime["progress"];
+    if (def.id === TRASH_PLATE_ID) {
+      const width = def.width - 56;
+      const x = def.x + 28;
+      const y = def.y + 24;
+      scene.add
+        .rectangle(x, y, width, 22, PAPER, 1)
+        .setOrigin(0, 0.5)
+        .setStrokeStyle(4, INK, 1)
+        .setDepth(3);
+      const fill = scene.add.rectangle(x, y, 0, 12, ACCENT_ACTIVE, 1).setOrigin(0, 0.5).setDepth(4);
+      progress = { fill, width };
+    }
+
+    return { def, active: false, glow, plate, icon, countLabel, progress };
   });
 
   const doors: DoorRuntime[] = DOORS.map((def) => {

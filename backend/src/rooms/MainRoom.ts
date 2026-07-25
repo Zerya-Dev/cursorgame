@@ -214,13 +214,16 @@ export class MainRoom extends Room {
     this.world.collectEntities(TRASH_PLATE, "ball");
 
     for (const doorId of DOOR_IDS) {
+      const doorDef = DOORS.find((door) => door.id === doorId);
       const gatingPlates = PLATES.filter((definition: PlateDef) =>
         definition.doorIds.includes(doorId),
       );
       const satisfied =
         doorId === TRASH_DOOR_ID
           ? this.state.button.stage === 2 && this.prankBallsRemaining() === 0
-          : gatingPlates.length > 0 && gatingPlates.every((plate) => activePlates.get(plate.id));
+          : doorDef?.plateGroups
+            ? doorDef.plateGroups.some((group) => group.every((id) => activePlates.get(id)))
+            : gatingPlates.length > 0 && gatingPlates.every((plate) => activePlates.get(plate.id));
       if (satisfied) {
         this.doorOpenUntil.set(doorId, now + DOOR_HOLD_MS);
         if (PERMANENT_DOORS.has(doorId)) this.unlockedDoors.add(doorId);

@@ -1,7 +1,7 @@
 import type { Rect } from "./physics.js";
 
 export const WORLD_WIDTH = 2000;
-export const LOBBY_HEIGHT = 1800;
+export const LOBBY_HEIGHT = 2150;
 export const CORRIDOR_WIDTH = 320;
 export const CORRIDOR_HEIGHT = 2000;
 export const WORLD_HEIGHT = LOBBY_HEIGHT + CORRIDOR_HEIGHT;
@@ -14,6 +14,8 @@ export interface Door extends Rect {
   id: string;
   /** once opened, stays open forever instead of re-locking when plates release */
   permanent?: boolean;
+  /** each inner list is an AND group; satisfying any group opens the door */
+  plateGroups?: string[][];
 }
 
 export interface PlateFilter {
@@ -38,6 +40,7 @@ export interface PressurePlate extends Rect {
   /** requirement on the number of matching occupants; omitted = at least 1 */
   count?: PlateCountRule;
   label?: string;
+  countLabel?: string;
 }
 
 export interface ColorStation extends Rect {
@@ -85,8 +88,8 @@ const LEVEL1_BOTTOM = LEVEL1_TOP + LEVEL1_HEIGHT;
 const LEVEL1_LEFT = 500;
 const LEVEL1_RIGHT = 1500;
 
-// The lobby floor, bottom wall inner edge.
-const LOBBY_BOTTOM = WORLD_HEIGHT - T;
+// The original lobby edge; the slide now has its own open strip below it.
+export const MAIN_LOBBY_BOTTOM = CORRIDOR_HEIGHT + 1800;
 
 // The lobby is split into three rooms side-by-side: a colour room (west), the
 // main hall (centre, under the corridor exit), and a practice room (east).
@@ -120,9 +123,8 @@ export interface EntityKindConfig {
 export const OBSTACLES: Obstacle[] = [
   // Outer walls
   { x: 0, y: 0, width: WORLD_WIDTH, height: T },
-  { x: 0, y: WORLD_HEIGHT - T, width: WORLD_WIDTH, height: T },
-  { x: 0, y: 0, width: T, height: WORLD_HEIGHT },
-  { x: WORLD_WIDTH - T, y: 0, width: T, height: WORLD_HEIGHT },
+  { x: 0, y: 0, width: T, height: MAIN_LOBBY_BOTTOM },
+  { x: WORLD_WIDTH - T, y: 0, width: T, height: MAIN_LOBBY_BOTTOM },
 
   // Landing beyond door "2" -- the cheese's clearing.
   { x: T, y: T, width: CORRIDOR_LEFT - T, height: DOOR2_Y - T },
@@ -168,13 +170,27 @@ export const OBSTACLES: Obstacle[] = [
     height: LOBBY_TOP - LEVEL1_BOTTOM,
   },
 
-  // Colour room | main hall divider. Open gap (no door) -- you just walk in.
+  // Colour room | main hall divider. The gap is filled by door "colour" below.
   { x: HALL_LEFT_WALL_X, y: LOBBY_TOP, width: T, height: ROOM_GAP_TOP - LOBBY_TOP },
-  { x: HALL_LEFT_WALL_X, y: ROOM_GAP_BOTTOM, width: T, height: LOBBY_BOTTOM - ROOM_GAP_BOTTOM },
+  {
+    x: HALL_LEFT_WALL_X,
+    y: ROOM_GAP_BOTTOM,
+    width: T,
+    height: MAIN_LOBBY_BOTTOM - ROOM_GAP_BOTTOM,
+  },
 
   // Main hall | practice room divider. Gap is filled by door "practice" below.
   { x: HALL_RIGHT_WALL_X, y: LOBBY_TOP, width: T, height: ROOM_GAP_TOP - LOBBY_TOP },
-  { x: HALL_RIGHT_WALL_X, y: ROOM_GAP_BOTTOM, width: T, height: LOBBY_BOTTOM - ROOM_GAP_BOTTOM },
+  {
+    x: HALL_RIGHT_WALL_X,
+    y: ROOM_GAP_BOTTOM,
+    width: T,
+    height: MAIN_LOBBY_BOTTOM - ROOM_GAP_BOTTOM,
+  },
+
+  // The old lobby edge remains as a boundary; the slide dives beneath it into
+  // its own southern run and tunnels back up into the practice room.
+  { x: T, y: MAIN_LOBBY_BOTTOM, width: WORLD_WIDTH - T * 2, height: T },
 ];
 
 export const DOORS: Door[] = [
@@ -192,16 +208,30 @@ export const DOORS: Door[] = [
   // Sits exactly in the corridor funnel's gap (x = CORRIDOR_LEFT, width = CORRIDOR_WIDTH) so it
   // fully covers the opening -- previously this was offset from the funnel and left a sliver of
   // the "closed" gap always walkable.
-  { x: CORRIDOR_LEFT, y: LOBBY_TOP - 30, width: CORRIDOR_WIDTH, height: 30, id: "0" },
-  // Practice room door: opened by the two practice plates, then stays open forever (permanent)
-  // so the room is free to wander back into once you've learned the mechanic.
+  {
+    x: CORRIDOR_LEFT,
+    y: LOBBY_TOP - 30,
+    width: CORRIDOR_WIDTH,
+    height: 30,
+    id: "0",
+    permanent: true,
+  },
+  {
+    x: HALL_LEFT_WALL_X,
+    y: ROOM_GAP_TOP,
+    width: T,
+    height: ROOM_GAP_HEIGHT,
+    id: "colour",
+    plateGroups: [["plate-colour-inside"], ["plate-colour-outside"]],
+  },
+  // A temporary practice door: it closes again after its plate is released.
   {
     x: HALL_RIGHT_WALL_X,
     y: ROOM_GAP_TOP,
     width: T,
     height: ROOM_GAP_HEIGHT,
     id: "practice",
-    permanent: true,
+    plateGroups: [["plate-practice-1", "plate-practice-2"]],
   },
 ];
 
@@ -216,6 +246,7 @@ export const PLATES: PressurePlate[] = [
     doorIds: [],
     filter: { entityKind: "ball" },
     label: "trash",
+    countLabel: "ALL",
   },
 
   // Level 1: stand evenly split across both plates to open door "1".
@@ -249,8 +280,8 @@ export const PLATES: PressurePlate[] = [
     width: 100,
     height: 100,
     doorIds: ["0"],
-    filter: { entityKind: "player" },
-    count: { mode: "exact", value: 1 },
+    filter: { entityKind: "player", color: "#5b8fd9" },
+    count: { mode: "exact", value: 3 },
   },
   {
     id: "plate-gate-2",
@@ -259,7 +290,7 @@ export const PLATES: PressurePlate[] = [
     width: 100,
     height: 100,
     doorIds: ["0"],
-    filter: { entityKind: "player" },
+    filter: { entityKind: "player", color: "#8b5a3c" },
     count: { mode: "exact", value: 1 },
   },
   {
@@ -270,31 +301,46 @@ export const PLATES: PressurePlate[] = [
     height: 100,
     doorIds: ["0"],
     filter: { entityKind: "player" },
-    count: { mode: "exact", value: 1 },
+    count: { mode: "atLeast", value: 1 },
   },
 
-  // Practice plates: a miniature of the real gate (2 plates instead of 3, no stakes) that
-  // opens the permanent door into the practice room, sitting just outside it.
+  // Either side of the colour-room door has its own one-person release plate.
+  {
+    id: "plate-colour-inside",
+    x: 370,
+    y: 2540,
+    width: 100,
+    height: 120,
+    doorIds: ["colour"],
+    count: { mode: "atLeast", value: 1 },
+  },
+  {
+    id: "plate-colour-outside",
+    x: 570,
+    y: 2540,
+    width: 100,
+    height: 120,
+    doorIds: ["colour"],
+    count: { mode: "atLeast", value: 1 },
+  },
+
+  // Two mice or movable objects open the practice room from the lobby.
   {
     id: "plate-practice-1",
     x: 1370,
-    y: 2350,
-    width: 100,
-    height: 100,
+    y: 2370,
+    width: 110,
+    height: 110,
     doorIds: ["practice"],
-    // no filter: a barrel shoved onto it counts just as much as a mouse, so one
-    // player can still open the practice room on their own
     count: { mode: "atLeast", value: 1 },
   },
   {
     id: "plate-practice-2",
     x: 1370,
-    y: 2600,
-    width: 100,
-    height: 100,
+    y: 2720,
+    width: 110,
+    height: 110,
     doorIds: ["practice"],
-    // no filter: a barrel shoved onto it counts just as much as a mouse, so one
-    // player can still open the practice room on their own
     count: { mode: "atLeast", value: 1 },
   },
 ];
@@ -312,12 +358,18 @@ export const DOOR_IDS = DOORS.map((door) => door.id);
 // read unambiguously as red/green/blue, but sit on the paper instead of
 // fighting it. No black option -- it just vanished into the ink linework.
 export const COLOR_STATIONS: ColorStation[] = [
-  { color: "#c4553f", label: "RED", x: 150, y: 2300, width: 70, height: 70 },
-  { color: "#5bbf6a", label: "GREEN", x: 240, y: 2300, width: 70, height: 70 },
-  { color: "#5b8fd9", label: "BLUE", x: 330, y: 2300, width: 70, height: 70 },
+  { color: "#c4553f", label: "RED", x: 100, y: 2200, width: 70, height: 70 },
+  { color: "#5bbf6a", label: "GREEN", x: 215, y: 2200, width: 70, height: 70 },
+  { color: "#5b8fd9", label: "BLUE", x: 330, y: 2200, width: 70, height: 70 },
+  { color: "#e5b83f", label: "YELLOW", x: 100, y: 2310, width: 70, height: 70 },
+  { color: "#9567c6", label: "PURPLE", x: 215, y: 2310, width: 70, height: 70 },
+  { color: "#8b5a3c", label: "BROWN", x: 330, y: 2310, width: 70, height: 70 },
 ];
 
 export const LAVA_ZONES: LavaZone[] = [];
+
+// A tiny football pitch in the lower colour room. The movable barrel is the ball.
+export const FOOTBALL_PITCH: Rect = { x: 90, y: 2820, width: 360, height: 840 };
 
 export interface Slide {
   id: string;
@@ -336,17 +388,28 @@ export interface Slide {
  * the last waypoint is where you are set down.
  */
 export const SLIDES: Slide[] = [
-  // Runs left-to-right across the bottom of the lobby, tunnelling under both
-  // dividing walls: colour room -> main hall -> practice room.
+  // Starts at the middle-bottom, dives outside the lobby, curls through a
+  // southern spiral, then tunnels back into the practice room.
   {
-    id: "slide-colour-to-practice",
-    entry: { x: 110, y: 3360, width: 170, height: 170 },
+    id: "slide-lobby-to-practice",
+    entry: { x: 900, y: 3450, width: 170, height: 170 },
     path: [
-      { x: 195, y: 3445 },
-      { x: 400, y: 3560 },
-      { x: 900, y: 3620 },
-      { x: 1400, y: 3560 },
-      { x: 1770, y: 3430 },
+      { x: 985, y: 3535 },
+      { x: 1000, y: 3800 },
+      { x: 1090, y: 3980 },
+      { x: 1280, y: 4060 },
+      { x: 1470, y: 4010 },
+      { x: 1570, y: 3870 },
+      { x: 1550, y: 3710 },
+      { x: 1430, y: 3620 },
+      { x: 1280, y: 3630 },
+      { x: 1180, y: 3730 },
+      { x: 1180, y: 3860 },
+      { x: 1270, y: 3940 },
+      { x: 1390, y: 3930 },
+      { x: 1470, y: 3850 },
+      { x: 1590, y: 3740 },
+      { x: 1760, y: 3520 },
     ],
     speed: 850,
   },
@@ -358,26 +421,38 @@ export const SLIDES: Slide[] = [
  */
 export const WORLD_TEXTS: WorldText[] = [
   {
-    x: 260,
-    y: ROOM_TOP + 40,
-    text: "toss balls in here to earn the cheese",
-    size: 20,
+    x: 1000,
+    y: ROOM_TOP + 55,
+    text: "THE CHEESE TAX: payable in balls",
+    size: 25,
     rotation: -2,
   },
   {
     x: 1000,
-    y: LEVEL1_TOP + 40,
-    text: "split evenly - half left, half right",
-    size: 24,
+    y: LEVEL1_TOP + 60,
+    text: "this door hates uneven friendships",
+    size: 26,
     rotation: 1,
   },
   { x: 1000, y: 2070, text: "the cheese is a lie.", size: 48, rotation: -2 },
   { x: 292, y: 3300, text: "look! a droga szybkiego ruchu!", size: 24, rotation: 2 },
   { x: 270, y: 2200, text: "pick a colour", size: 28, rotation: -3 },
-  { x: 1270, y: 2470, text: "try the pressure plates here. nothing bad happens.", size: 22, rotation: 1 },
+  {
+    x: 1270,
+    y: 2470,
+    text: "try the pressure plates here. nothing bad happens.",
+    size: 22,
+    rotation: 1,
+  },
   { x: 1750, y: 2150, text: "no cheese in here :((", size: 24, rotation: -2 },
   { x: 1000, y: 2960, text: "you - are - a - mouse", size: 22, rotation: 2 },
-  { x: 1000, y: 3050, text: "try to push this around while you wait for others v", size: 20, rotation: -1 },
+  {
+    x: 1000,
+    y: 3050,
+    text: "try to push this around while you wait for others v",
+    size: 20,
+    rotation: -1,
+  },
 ];
 
 export interface DecorDef {
@@ -418,11 +493,6 @@ export const DECORATIONS: DecorDef[] = [
   { sprite: "chest", x: 150, y: 2700, size: 75, rotation: -4 },
   { sprite: "table", x: 380, y: 2700, size: 95, rotation: 3 },
   { sprite: "chair", x: 380, y: 2790, size: 55, rotation: 6 },
-  { sprite: "tree", x: 250, y: 3000, size: 90, rotation: 0 },
-  { sprite: "barrels", x: 120, y: 3200, size: 80, rotation: -6 },
-  { sprite: "puddle", x: 400, y: 3200, size: 100, rotation: 0 },
-  { sprite: "crate", x: 250, y: 3400, size: 70, rotation: 5 },
-
   // Practice room.
   { sprite: "carpet", x: 1750, y: 2200, size: 120, rotation: 0 },
   { sprite: "crate", x: 1650, y: 2350, size: 70, rotation: 4 },
