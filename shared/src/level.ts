@@ -126,7 +126,14 @@ export const OBSTACLES: Obstacle[] = [
 
 export const DOORS: Door[] = [
   { x: 680, y: 1970, width: 320, height: 30, id: "0" },
-  { x: CORRIDOR_LEFT, y: LEVEL1_DOOR_Y, width: CORRIDOR_WIDTH, height: 30, id: "1", permanent: true },
+  {
+    x: CORRIDOR_LEFT,
+    y: LEVEL1_DOOR_Y,
+    width: CORRIDOR_WIDTH,
+    height: 30,
+    id: "1",
+    permanent: true,
+  },
 ];
 
 export const PLATES: PressurePlate[] = [
