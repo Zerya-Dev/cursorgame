@@ -32,6 +32,7 @@ interface PlateRuntime {
  */
 export class GameScene extends Phaser.Scene {
   private cursor!: Phaser.GameObjects.Image;
+  private cursorOutline!: Phaser.GameObjects.Image;
   private velocity = new Phaser.Math.Vector2();
   private pendingInput = new Phaser.Math.Vector2();
   private localTrailAnchor = new Phaser.Math.Vector2();
@@ -76,6 +77,10 @@ export class GameScene extends Phaser.Scene {
 
     const startX = WORLD_WIDTH / 2;
     const startY = WORLD_HEIGHT / 2;
+    this.cursorOutline = this.add.image(startX, startY, 'cursorIcon');
+    this.cursorOutline.setTint(0xffffff); // White outline
+    this.cursorOutline.setScale(1.2);   // Slightly larger than original
+    this.cursorOutline.setDepth(9);
     this.cursor = this.add.image(startX, startY, 'cursorIcon');
     this.cursor.setTint(this.localColor);
     this.cursor.setDepth(10);
@@ -118,6 +123,7 @@ export class GameScene extends Phaser.Scene {
       if (this.input.mouse?.locked) {
         this.pendingInput.x += pointer.movementX;
         this.pendingInput.y += pointer.movementY;
+
       }
     });
 
@@ -184,6 +190,7 @@ export class GameScene extends Phaser.Scene {
     this.emitTrail(this.cursor.x, this.cursor.y, this.localTrailAnchor, this.localColor);
     this.multiplayer?.publishPosition(_time, this.cursor.x, this.cursor.y);
     this.updateColorStation();
+    this.cursorOutline.setPosition(this.cursor.x, this.cursor.y);
   }
 
   private syncState(state: RoomState, localSessionId: string) {
