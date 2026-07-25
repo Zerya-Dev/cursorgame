@@ -3,7 +3,7 @@ import type { Rect } from "./physics.js";
 export const WORLD_WIDTH = 2000;
 export const LOBBY_HEIGHT = 2150;
 export const CORRIDOR_WIDTH = 320;
-export const CORRIDOR_HEIGHT = 2000;
+export const CORRIDOR_HEIGHT = 8100;
 export const WORLD_HEIGHT = LOBBY_HEIGHT + CORRIDOR_HEIGHT;
 
 export const PLAYER_RADIUS = 12;
@@ -52,6 +52,22 @@ export interface LavaZone extends Obstacle {
   teleportTo: { x: number; y: number };
 }
 
+export interface MovingLavaWall {
+  y: number;
+  height: number;
+  /** width of the whole solid-gap-solid assembly, less than the room's width so it can slide */
+  wallWidth: number;
+  /** width of the gap (hole) cut into the wall */
+  gapWidth: number;
+  /** where the gap's left edge sits within the assembly, measured from the assembly's own left edge */
+  gapOffset: number;
+  /** world px/sec the assembly sweeps right to left */
+  speed: number;
+  /** px added before the loop wraps, so lanes don't all move in lockstep */
+  startOffset: number;
+  teleportTo: { x: number; y: number };
+}
+
 export interface WorldText {
   x: number;
   y: number;
@@ -74,12 +90,32 @@ const CORRIDOR_RIGHT = CORRIDOR_LEFT + CORRIDOR_WIDTH;
 // lobby. Every one of these sits *above* LOBBY_TOP, so the lobby itself (and
 // everything in it) keeps its original coordinates.
 
+const CHEESE_LANDING = 110; // clearance above the moving-wall room, where the cheese sits
+
+// Level 4 (the newest, sitting just below the cheese landing, just above the maze): a
+// row of lava walls, each with a single gap, that rigidly slide right to left and wrap
+// around once fully offscreen. Full width like the button/trash room -- no need to
+// narrow it down for a bulge, it's already as wide as the corridor ever gets.
+const MOVING_ROOM_HEIGHT = 6000;
+const MOVING_ROOM_LANES = 50;
+const MOVING_ROOM_LANE_HEIGHT = MOVING_ROOM_HEIGHT / MOVING_ROOM_LANES;
+const MOVING_WALL_HEIGHT = 36;
+const MOVING_WALL_WIDTH = 1300;
+const MOVING_WALL_GAP = 160;
+
+const MOVING_ROOM_TOP = T + CHEESE_LANDING;
+const MOVING_ROOM_BOTTOM = MOVING_ROOM_TOP + MOVING_ROOM_HEIGHT;
+export const MOVING_WALL_ROOM_LEFT = T;
+export const MOVING_WALL_ROOM_RIGHT = WORLD_WIDTH - T;
+const MOVING_ROOM_ENTRANCE = { x: WORLD_WIDTH / 2, y: MOVING_ROOM_BOTTOM - 40 };
+
+const MOVING_ROOM_STUB_BELOW = 90; // re-joins the corridor's width down to the maze
+
 // Level 3: a lava maze, laid out on a grid and carved with a randomized
 // depth-first search ("recursive backtracker") so there's exactly one path
 // through. Wider than the corridor, with narrow stubs re-joining the
 // corridor's width at both ends. Touch a wall and you're bounced back to the
 // maze's entrance instead of dying.
-const CHEESE_LANDING = 110; // clearance above the maze, where the cheese sits
 const MAZE_WIDTH = 900;
 const MAZE_LEFT = (WORLD_WIDTH - MAZE_WIDTH) / 2;
 const MAZE_RIGHT = MAZE_LEFT + MAZE_WIDTH;
@@ -90,7 +126,7 @@ const MAZE_CELL_HEIGHT = 45;
 const MAZE_WALL_THICKNESS = 24;
 const MAZE_SEED = 1337; // fixed so the frontend and backend independently carve the same maze
 
-const MAZE_TOP = T + CHEESE_LANDING;
+const MAZE_TOP = MOVING_ROOM_BOTTOM + MOVING_ROOM_STUB_BELOW;
 const MAZE_BOTTOM = MAZE_TOP + MAZE_ROWS * MAZE_CELL_HEIGHT;
 const MAZE_ENTRANCE = {
   x: MAZE_LEFT + (Math.floor(MAZE_COLS / 2) + 0.5) * MAZE_CELL_WIDTH,
@@ -121,7 +157,7 @@ export const MAIN_LOBBY_BOTTOM = CORRIDOR_HEIGHT + 1800;
 // Both dividing walls are vertical, each with a single gap partway down.
 const HALL_LEFT_WALL_X = 500; // colour room | main hall
 const HALL_RIGHT_WALL_X = 1500; // main hall | practice room
-const ROOM_GAP_TOP = 2500;
+const ROOM_GAP_TOP = 8600;
 const ROOM_GAP_HEIGHT = 200;
 const ROOM_GAP_BOTTOM = ROOM_GAP_TOP + ROOM_GAP_HEIGHT;
 
@@ -151,9 +187,26 @@ export const OBSTACLES: Obstacle[] = [
   { x: 0, y: 0, width: T, height: MAIN_LOBBY_BOTTOM },
   { x: WORLD_WIDTH - T, y: 0, width: T, height: MAIN_LOBBY_BOTTOM },
 
-  // Cheese's landing above the maze.
-  { x: T, y: T, width: CORRIDOR_LEFT - T, height: MAZE_TOP - T },
-  { x: CORRIDOR_RIGHT, y: T, width: WORLD_WIDTH - T - CORRIDOR_RIGHT, height: MAZE_TOP - T },
+  // Cheese's landing above the moving-wall room.
+  { x: T, y: T, width: CORRIDOR_LEFT - T, height: MOVING_ROOM_TOP - T },
+  {
+    x: CORRIDOR_RIGHT,
+    y: T,
+    width: WORLD_WIDTH - T - CORRIDOR_RIGHT,
+    height: MOVING_ROOM_TOP - T,
+  },
+
+  // Moving-wall room is full-width, carved out the same way the button/trash room is
+  // below: just starting the next funnel run below it instead of right after this one.
+
+  // Corridor from the moving-wall room down to the maze.
+  { x: T, y: MOVING_ROOM_BOTTOM, width: CORRIDOR_LEFT - T, height: MAZE_TOP - MOVING_ROOM_BOTTOM },
+  {
+    x: CORRIDOR_RIGHT,
+    y: MOVING_ROOM_BOTTOM,
+    width: WORLD_WIDTH - T - CORRIDOR_RIGHT,
+    height: MAZE_TOP - MOVING_ROOM_BOTTOM,
+  },
 
   // The lava maze's own side walls, wider than the corridor.
   { x: T, y: MAZE_TOP, width: MAZE_LEFT - T, height: MAZE_BOTTOM - MAZE_TOP },
@@ -313,7 +366,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-gate-1",
     x: 805,
-    y: 2150,
+    y: 8250,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -323,7 +376,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-gate-2",
     x: 955,
-    y: 2150,
+    y: 8250,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -333,7 +386,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-gate-3",
     x: 1105,
-    y: 2150,
+    y: 8250,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -345,7 +398,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-colour-inside",
     x: 370,
-    y: 2540,
+    y: 8640,
     width: 100,
     height: 120,
     doorIds: ["colour"],
@@ -354,7 +407,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-colour-outside",
     x: 570,
-    y: 2540,
+    y: 8640,
     width: 100,
     height: 120,
     doorIds: ["colour"],
@@ -365,7 +418,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-practice-1",
     x: 1370,
-    y: 2370,
+    y: 8470,
     width: 110,
     height: 110,
     doorIds: ["practice"],
@@ -374,7 +427,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-practice-2",
     x: 1370,
-    y: 2720,
+    y: 8820,
     width: 110,
     height: 110,
     doorIds: ["practice"],
@@ -395,12 +448,12 @@ export const DOOR_IDS = DOORS.map((door) => door.id);
 // read unambiguously as red/green/blue, but sit on the paper instead of
 // fighting it. No black option -- it just vanished into the ink linework.
 export const COLOR_STATIONS: ColorStation[] = [
-  { color: "#c4553f", label: "RED", x: 100, y: 2200, width: 70, height: 70 },
-  { color: "#5bbf6a", label: "GREEN", x: 215, y: 2200, width: 70, height: 70 },
-  { color: "#5b8fd9", label: "BLUE", x: 330, y: 2200, width: 70, height: 70 },
-  { color: "#e5b83f", label: "YELLOW", x: 100, y: 2310, width: 70, height: 70 },
-  { color: "#9567c6", label: "PURPLE", x: 215, y: 2310, width: 70, height: 70 },
-  { color: "#8b5a3c", label: "BROWN", x: 330, y: 2310, width: 70, height: 70 },
+  { color: "#c4553f", label: "RED", x: 100, y: 8300, width: 70, height: 70 },
+  { color: "#5bbf6a", label: "GREEN", x: 215, y: 8300, width: 70, height: 70 },
+  { color: "#5b8fd9", label: "BLUE", x: 330, y: 8300, width: 70, height: 70 },
+  { color: "#e5b83f", label: "YELLOW", x: 100, y: 8410, width: 70, height: 70 },
+  { color: "#9567c6", label: "PURPLE", x: 215, y: 8410, width: 70, height: 70 },
+  { color: "#8b5a3c", label: "BROWN", x: 330, y: 8410, width: 70, height: 70 },
 ];
 
 // Seeded PRNG (mulberry32) so maze generation is deterministic -- this module runs
@@ -486,8 +539,67 @@ function buildMazeLavaZones(): LavaZone[] {
 
 export const LAVA_ZONES: LavaZone[] = buildMazeLavaZones();
 
+/**
+ * The two solid (lava) segments of a moving wall at a moment in time. The whole
+ * assembly -- both segments plus the gap between them -- rigidly sweeps right to
+ * left, wrapping back to fully off the right edge once it's fully exited on the
+ * left, so it reads as a continuous wave rather than a back-and-forth patrol.
+ *
+ * Pure function of wall-clock time (Date.now(), not a Phaser scene clock or a
+ * server tick), so every client computes the identical wall position for the
+ * same real-world moment without any network round-trip -- the same reasoning
+ * as why the static LAVA_ZONES need no server involvement.
+ */
+export function movingWallSegments(
+  wall: MovingLavaWall,
+  nowMs: number,
+  roomLeft: number,
+  roomRight: number,
+): Rect[] {
+  const cycle = roomRight - roomLeft + wall.wallWidth;
+  const traveled = ((nowMs / 1000) * wall.speed + wall.startOffset) % cycle;
+  const left = roomRight - traveled;
+  const gapStart = left + wall.gapOffset;
+  const gapEnd = gapStart + wall.gapWidth;
+  return [
+    { x: left, y: wall.y, width: wall.gapOffset, height: wall.height },
+    {
+      x: gapEnd,
+      y: wall.y,
+      width: wall.wallWidth - wall.gapOffset - wall.gapWidth,
+      height: wall.height,
+    },
+  ];
+}
+
+const MOVING_LANE_CENTERS = Array.from(
+  { length: MOVING_ROOM_LANES },
+  (_, i) => MOVING_ROOM_TOP + (i + 0.5) * MOVING_ROOM_LANE_HEIGHT,
+);
+
+// Deterministic per-lane variety (not true randomness -- doesn't need a seeded PRNG the
+// way the maze does, just enough spread that consecutive lanes don't feel identical).
+// gapOffset and startOffset each walk a large coprime-ish step around their own range so
+// the sequence doesn't visibly repeat before MOVING_ROOM_LANES gets very large.
+const MOVING_WALL_CYCLE = MOVING_WALL_ROOM_RIGHT - MOVING_WALL_ROOM_LEFT + MOVING_WALL_WIDTH;
+const MOVING_WALL_MAX_GAP_OFFSET = MOVING_WALL_WIDTH - MOVING_WALL_GAP;
+
+export const MOVING_LAVA_WALLS: MovingLavaWall[] = Array.from(
+  { length: MOVING_ROOM_LANES },
+  (_, i) => ({
+    y: MOVING_LANE_CENTERS[i] - MOVING_WALL_HEIGHT / 2,
+    height: MOVING_WALL_HEIGHT,
+    wallWidth: MOVING_WALL_WIDTH,
+    gapWidth: MOVING_WALL_GAP,
+    gapOffset: (i * 337) % MOVING_WALL_MAX_GAP_OFFSET,
+    speed: 170 + (i % 5) * 20,
+    startOffset: (i * 613) % MOVING_WALL_CYCLE,
+    teleportTo: MOVING_ROOM_ENTRANCE,
+  }),
+);
+
 // A tiny football pitch in the lower colour room. The movable barrel is the ball.
-export const FOOTBALL_PITCH: Rect = { x: 90, y: 2820, width: 360, height: 840 };
+export const FOOTBALL_PITCH: Rect = { x: 90, y: 8920, width: 360, height: 840 };
 
 export interface Slide {
   id: string;
@@ -510,24 +622,24 @@ export const SLIDES: Slide[] = [
   // southern spiral, then tunnels back into the practice room.
   {
     id: "slide-lobby-to-practice",
-    entry: { x: 900, y: 3450, width: 170, height: 170 },
+    entry: { x: 900, y: 9550, width: 170, height: 170 },
     path: [
-      { x: 985, y: 3535 },
-      { x: 1000, y: 3800 },
-      { x: 1090, y: 3980 },
-      { x: 1280, y: 4060 },
-      { x: 1470, y: 4010 },
-      { x: 1570, y: 3870 },
-      { x: 1550, y: 3710 },
-      { x: 1430, y: 3620 },
-      { x: 1280, y: 3630 },
-      { x: 1180, y: 3730 },
-      { x: 1180, y: 3860 },
-      { x: 1270, y: 3940 },
-      { x: 1390, y: 3930 },
-      { x: 1470, y: 3850 },
-      { x: 1590, y: 3740 },
-      { x: 1760, y: 3520 },
+      { x: 985, y: 9635 },
+      { x: 1000, y: 9900 },
+      { x: 1090, y: 10080 },
+      { x: 1280, y: 10160 },
+      { x: 1470, y: 10110 },
+      { x: 1570, y: 9970 },
+      { x: 1550, y: 9810 },
+      { x: 1430, y: 9720 },
+      { x: 1280, y: 9730 },
+      { x: 1180, y: 9830 },
+      { x: 1180, y: 9960 },
+      { x: 1270, y: 10040 },
+      { x: 1390, y: 10030 },
+      { x: 1470, y: 9950 },
+      { x: 1590, y: 9840 },
+      { x: 1760, y: 9620 },
     ],
     speed: 850,
   },
@@ -563,11 +675,11 @@ export const WORLD_TEXTS: WorldText[] = [
     size: 22,
     rotation: 1,
   },
-  { x: 1750, y: 2150, text: "no cheese in here :((", size: 24, rotation: -2 },
-  { x: 1000, y: 2960, text: "you - are - a - mouse", size: 22, rotation: 2 },
+  { x: 1750, y: 8250, text: "no cheese in here :((", size: 24, rotation: -2 },
+  { x: 1000, y: 9060, text: "you - are - a - mouse", size: 22, rotation: 2 },
   {
     x: 1000,
-    y: 3050,
+    y: 9150,
     text: "try to push this around while you wait for others v",
     size: 20,
     rotation: -1,
@@ -587,44 +699,44 @@ export interface DecorDef {
 /** Purely cosmetic props. Never collide -- they are not part of OBSTACLES. */
 export const DECORATIONS: DecorDef[] = [
   // Main hall, west pocket (between the colour-room wall and the gate/practice plates).
-  { sprite: "crate", x: 650, y: 2350, size: 70, rotation: 4 },
-  { sprite: "barrels", x: 680, y: 2450, size: 85, rotation: -6 },
-  { sprite: "plants", x: 650, y: 2650, size: 65, rotation: -5 },
+  { sprite: "crate", x: 650, y: 8450, size: 70, rotation: 4 },
+  { sprite: "barrels", x: 680, y: 8550, size: 85, rotation: -6 },
+  { sprite: "plants", x: 650, y: 8750, size: 65, rotation: -5 },
 
   // Main hall, east pocket (between the gate plates and the practice plates).
-  { sprite: "crate_small", x: 1250, y: 2350, size: 55, rotation: -9 },
-  { sprite: "plants", x: 1260, y: 2500, size: 62, rotation: 8 },
+  { sprite: "crate_small", x: 1250, y: 8450, size: 55, rotation: -9 },
+  { sprite: "plants", x: 1260, y: 8600, size: 62, rotation: 8 },
 
   // Main hall, lower-left.
-  { sprite: "table", x: 680, y: 3300, size: 100, rotation: -2 },
-  { sprite: "chair", x: 680, y: 3400, size: 60, rotation: 7 },
-  { sprite: "chest", x: 650, y: 3550, size: 75, rotation: -4 },
+  { sprite: "table", x: 680, y: 9400, size: 100, rotation: -2 },
+  { sprite: "chair", x: 680, y: 9500, size: 60, rotation: 7 },
+  { sprite: "chest", x: 650, y: 9650, size: 75, rotation: -4 },
 
   // Main hall, lower-right.
-  { sprite: "campfire", x: 1300, y: 3300, size: 95, rotation: 0 },
-  { sprite: "tree", x: 1250, y: 3500, size: 90, rotation: 0 },
-  { sprite: "puddle", x: 1350, y: 3600, size: 110, rotation: 0 },
+  { sprite: "campfire", x: 1300, y: 9400, size: 95, rotation: 0 },
+  { sprite: "tree", x: 1250, y: 9600, size: 90, rotation: 0 },
+  { sprite: "puddle", x: 1350, y: 9700, size: 110, rotation: 0 },
 
   // Colour room.
-  { sprite: "plants", x: 80, y: 2150, size: 60, rotation: -5 },
-  { sprite: "plants", x: 400, y: 2150, size: 60, rotation: 8 },
-  { sprite: "carpet", x: 270, y: 2550, size: 150, rotation: 0 },
-  { sprite: "chest", x: 150, y: 2700, size: 75, rotation: -4 },
-  { sprite: "table", x: 380, y: 2700, size: 95, rotation: 3 },
-  { sprite: "chair", x: 380, y: 2790, size: 55, rotation: 6 },
+  { sprite: "plants", x: 80, y: 8250, size: 60, rotation: -5 },
+  { sprite: "plants", x: 400, y: 8250, size: 60, rotation: 8 },
+  { sprite: "carpet", x: 270, y: 8650, size: 150, rotation: 0 },
+  { sprite: "chest", x: 150, y: 8800, size: 75, rotation: -4 },
+  { sprite: "table", x: 380, y: 8800, size: 95, rotation: 3 },
+  { sprite: "chair", x: 380, y: 8890, size: 55, rotation: 6 },
   // Practice room.
-  { sprite: "carpet", x: 1750, y: 2200, size: 120, rotation: 0 },
-  { sprite: "crate", x: 1650, y: 2350, size: 70, rotation: 4 },
-  { sprite: "crate_small", x: 1850, y: 2350, size: 55, rotation: -8 },
-  { sprite: "barrel", x: 1700, y: 2550, size: 60, rotation: 3 },
-  { sprite: "table", x: 1850, y: 2600, size: 95, rotation: -2 },
-  { sprite: "chair", x: 1850, y: 2690, size: 55, rotation: 6 },
-  { sprite: "plants", x: 1620, y: 2800, size: 65, rotation: -5 },
-  { sprite: "campfire", x: 1800, y: 2950, size: 90, rotation: 0 },
-  { sprite: "chest", x: 1650, y: 3150, size: 75, rotation: -4 },
-  { sprite: "tree", x: 1850, y: 3300, size: 85, rotation: 0 },
-  { sprite: "puddle", x: 1700, y: 3450, size: 105, rotation: 0 },
-  { sprite: "barrels", x: 1850, y: 3550, size: 80, rotation: -6 },
+  { sprite: "carpet", x: 1750, y: 8300, size: 120, rotation: 0 },
+  { sprite: "crate", x: 1650, y: 8450, size: 70, rotation: 4 },
+  { sprite: "crate_small", x: 1850, y: 8450, size: 55, rotation: -8 },
+  { sprite: "barrel", x: 1700, y: 8650, size: 60, rotation: 3 },
+  { sprite: "table", x: 1850, y: 8700, size: 95, rotation: -2 },
+  { sprite: "chair", x: 1850, y: 8790, size: 55, rotation: 6 },
+  { sprite: "plants", x: 1620, y: 8900, size: 65, rotation: -5 },
+  { sprite: "campfire", x: 1800, y: 9050, size: 90, rotation: 0 },
+  { sprite: "chest", x: 1650, y: 9250, size: 75, rotation: -4 },
+  { sprite: "tree", x: 1850, y: 9400, size: 85, rotation: 0 },
+  { sprite: "puddle", x: 1700, y: 9550, size: 105, rotation: 0 },
+  { sprite: "barrels", x: 1850, y: 9650, size: 80, rotation: -6 },
 ];
 
 /**
@@ -665,5 +777,5 @@ export const ENTITY_KINDS: Record<string, EntityKindConfig> = {
 export const ENTITIES: EntityDef[] = [
   // A barrel dwarfs a mouse -- not to real scale, but the size gap has to read. Sits well
   // clear of SPAWN_POINT (which lands ~250px north of it) and every wall.
-  { kind: "ball", id: "ball-main", x: 1000, y: 3150, radius: 46, color: "#e0e0e0" },
+  { kind: "ball", id: "ball-main", x: 1000, y: 9250, radius: 46, color: "#e0e0e0" },
 ];

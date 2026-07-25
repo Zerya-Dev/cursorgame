@@ -4,6 +4,9 @@ import {
   BUTTON,
   COLOR_STATIONS,
   LAVA_ZONES,
+  MOVING_LAVA_WALLS,
+  MOVING_WALL_ROOM_LEFT,
+  MOVING_WALL_ROOM_RIGHT,
   OBSTACLES,
   PLAYER_RADIUS,
   SPAWN_POINT,
@@ -25,7 +28,14 @@ import {
   updateCollectorProgress,
 } from "../gameplay/levelView";
 import type { ButtonRuntime, DoorRuntime, PlateRuntime } from "../gameplay/levelView";
-import { buildLavaZones, findLavaZone } from "../gameplay/lava";
+import {
+  buildLavaZones,
+  buildMovingLavaWalls,
+  findLavaZone,
+  findMovingLavaHit,
+  updateMovingLavaWalls,
+} from "../gameplay/lava";
+import type { MovingWallRuntime } from "../gameplay/lava";
 import { SLIDE_DEFAULT_SPEED, SLIDE_MAX_MS, buildSlides, findSlide } from "../gameplay/slide";
 import { buildWorldTexts } from "../gameplay/worldText";
 import { FONT_HAND, INK_SOFT_CSS } from "../gameplay/palette";
@@ -49,6 +59,7 @@ export class GameScene extends Phaser.Scene {
   private status!: Phaser.GameObjects.Text;
   private doors: DoorRuntime[] = [];
   private plates: PlateRuntime[] = [];
+  private movingWalls: MovingWallRuntime[] = [];
   private button!: ButtonRuntime;
   private multiplayer?: MultiplayerClient;
   private renderPlayers!: RenderPlayers;
@@ -90,6 +101,7 @@ export class GameScene extends Phaser.Scene {
     this.doors = doors;
     this.plates = plates;
     buildLavaZones(this, LAVA_ZONES);
+    this.movingWalls = buildMovingLavaWalls(this, MOVING_LAVA_WALLS);
     buildSlides(this, 1);
     buildWorldTexts(this, WORLD_TEXTS);
     this.button = buildButton(this);
@@ -220,6 +232,13 @@ export class GameScene extends Phaser.Scene {
 
     const dt = Math.min(deltaMs / 1000, 0.05);
 
+    updateMovingLavaWalls(
+      this.movingWalls,
+      Date.now(),
+      MOVING_WALL_ROOM_LEFT,
+      MOVING_WALL_ROOM_RIGHT,
+    );
+
     const solids = this.collectSolids();
     const cursorFromX = this.cursor.x;
     const cursorFromY = this.cursor.y;
@@ -255,6 +274,7 @@ export class GameScene extends Phaser.Scene {
         moveAndCollide(this.cursor, this.velocity, this.radius, dx, dy, solids);
       }
       this.updateLava();
+      this.updateMovingLava();
     }
 
     this.renderPlayers.update(dt);
@@ -443,6 +463,20 @@ export class GameScene extends Phaser.Scene {
     const zone = findLavaZone(this.cursor, this.radius, LAVA_ZONES);
     if (!zone) return;
     this.cursor.setPosition(zone.teleportTo.x, zone.teleportTo.y);
+    this.velocity.set(0, 0);
+  }
+
+  private updateMovingLava() {
+    const wall = findMovingLavaHit(
+      this.cursor,
+      this.radius,
+      MOVING_LAVA_WALLS,
+      Date.now(),
+      MOVING_WALL_ROOM_LEFT,
+      MOVING_WALL_ROOM_RIGHT,
+    );
+    if (!wall) return;
+    this.cursor.setPosition(wall.teleportTo.x, wall.teleportTo.y);
     this.velocity.set(0, 0);
   }
 
