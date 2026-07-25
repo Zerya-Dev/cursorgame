@@ -1,4 +1,4 @@
-import {MapSchema, Schema, type} from "@colyseus/schema";
+import {ArraySchema, MapSchema, Schema, type} from "@colyseus/schema";
 
 export class Player extends Schema {
   @type("string") name: string;
@@ -17,5 +17,5 @@ export class Door extends Schema {
 
 export class MainRoomState extends Schema {
   @type({ map: Player }) players = new MapSchema<Player>();
-  @type({ map: Door }) doors = new MapSchema<Door>();
+  @type({ array: Door }) doors = new ArraySchema<Door>();
 }
