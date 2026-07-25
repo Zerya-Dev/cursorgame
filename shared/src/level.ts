@@ -1,11 +1,9 @@
-import { WORLD_HEIGHT, WORLD_WIDTH } from "./config";
 import type { Rect } from "./physics.js";
 
 export const WORLD_WIDTH = 3200;
 export const WORLD_HEIGHT = 2400;
-export const PLAYER_RADIUS = 12;
 
-const T = 40;
+export const PLAYER_RADIUS = 12;
 
 export type Obstacle = Rect;
 
