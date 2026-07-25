@@ -68,6 +68,7 @@ export class GameScene extends Phaser.Scene {
   private touchNavigation = false;
   private touchPointerId?: number;
   private previousTouch = new Phaser.Math.Vector2();
+  private noclip = false;
   private readonly radius = PLAYER_RADIUS;
   private readonly sensitivity = 0.82;
   private readonly movementResponse = 14;
@@ -176,6 +177,13 @@ export class GameScene extends Phaser.Scene {
     this.game.events.on(Phaser.Core.Events.BLUR, stopSpray);
 
     this.input.keyboard?.on("keydown-ESC", () => this.input.mouse?.releasePointerLock());
+    if (import.meta.env.DEV) {
+      this.input.keyboard?.on("keydown-F2", (event: KeyboardEvent) => {
+        if (event.repeat) return;
+        this.noclip = !this.noclip;
+        this.updateHint(this.pointerLocked);
+      });
+    }
 
     this.multiplayer = new MultiplayerClient({
       onState: (state, sessionId) => this.syncState(state, sessionId),
@@ -256,7 +264,12 @@ export class GameScene extends Phaser.Scene {
       const dy = this.velocity.y * travelScale;
       this.velocity.scale(decay);
 
-      moveAndCollide(this.cursor, this.velocity, this.radius, dx, dy, solids);
+      if (this.noclip) {
+        this.cursor.x += dx;
+        this.cursor.y += dy;
+      } else {
+        moveAndCollide(this.cursor, this.velocity, this.radius, dx, dy, solids);
+      }
       this.updateLava();
     }
 
@@ -454,10 +467,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateHint(locked = this.input.mouse?.locked ?? false) {
+    const debugHint = import.meta.env.DEV ? `\nF2 noclip: ${this.noclip ? "on" : "off"}` : "";
     if (this.touchNavigation) {
-      this.status.setText("swipe anywhere to scurry");
+      this.status.setText(`swipe anywhere to scurry${debugHint}`);
       return;
     }
-    this.status.setText(locked ? "esc to let go" : "click to grab the mouse");
+    this.status.setText(`${locked ? "esc to let go" : "click to grab the mouse"}${debugHint}`);
   }
 }
