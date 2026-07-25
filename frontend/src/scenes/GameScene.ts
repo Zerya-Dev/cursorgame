@@ -250,7 +250,12 @@ export class GameScene extends Phaser.Scene {
 
     const dt = Math.min(deltaMs / 1000, 0.05);
 
-    updateMovingLavaWalls(this.movingWalls, Date.now(), MOVING_WALL_ROOM_LEFT, MOVING_WALL_ROOM_RIGHT);
+    updateMovingLavaWalls(
+      this.movingWalls,
+      Date.now(),
+      MOVING_WALL_ROOM_LEFT,
+      MOVING_WALL_ROOM_RIGHT,
+    );
 
     const solids = this.collectSolids();
     const cursorFromX = this.cursor.x;

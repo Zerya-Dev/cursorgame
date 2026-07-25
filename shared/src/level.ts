@@ -563,7 +563,12 @@ export function movingWallSegments(
   const gapEnd = gapStart + wall.gapWidth;
   return [
     { x: left, y: wall.y, width: wall.gapOffset, height: wall.height },
-    { x: gapEnd, y: wall.y, width: wall.wallWidth - wall.gapOffset - wall.gapWidth, height: wall.height },
+    {
+      x: gapEnd,
+      y: wall.y,
+      width: wall.wallWidth - wall.gapOffset - wall.gapWidth,
+      height: wall.height,
+    },
   ];
 }
 
