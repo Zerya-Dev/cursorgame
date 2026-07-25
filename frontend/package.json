@@ -9,8 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@colyseus/schema": "^5.0.9",
-    "colyseus.js": "^0.16.22",
+    "@colyseus/schema": "^4.0.0",
+    "@colyseus/sdk": "^0.17.43",
     "phaser": "^4.2.1"
   },
   "devDependencies": {

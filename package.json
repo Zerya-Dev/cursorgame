@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "pnpm --parallel --filter cursorgame-server --filter cursorgame-frontend dev",
+    "docker:build": "docker build -t cursorgame .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

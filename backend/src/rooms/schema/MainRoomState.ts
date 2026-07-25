@@ -1,21 +1,24 @@
-import {ArraySchema, MapSchema, Schema, type} from "@colyseus/schema";
+import { MapSchema, Schema, type } from "@colyseus/schema";
 
 export class Player extends Schema {
-  @type("string") name: string;
-  @type("number") x: number;
-  @type("number") y: number;
+  @type("string") name = "";
+  @type("string") color = "#4ade80";
+  @type("number") x = 1600;
+  @type("number") y = 1200;
 }
 
 export class Door extends Schema {
-  @type("string") name: string;
-  @type("number") y: number;
-  @type("number") x: number;
-  @type("number") yButton: number;
-  @type("number") xButton: number;
-  @type("boolean") open: boolean;
+  @type("string") id = "";
+  @type("boolean") open = false;
+}
+
+export class PressurePlate extends Schema {
+  @type("string") id = "";
+  @type("boolean") active = false;
 }
 
 export class MainRoomState extends Schema {
   @type({ map: Player }) players = new MapSchema<Player>();
-  @type({ array: Door }) doors = new ArraySchema<Door>();
+  @type({ map: Door }) doors = new MapSchema<Door>();
+  @type({ map: PressurePlate }) plates = new MapSchema<PressurePlate>();
 }
