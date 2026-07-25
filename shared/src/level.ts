@@ -357,7 +357,13 @@ export const SLIDES: Slide[] = [
  * reads as part of the world. Coordinates are centres.
  */
 export const WORLD_TEXTS: WorldText[] = [
-  { x: 260, y: ROOM_TOP + 40, text: "toss balls in here to earn the cheese", size: 20, rotation: -2 },
+  {
+    x: 260,
+    y: ROOM_TOP + 40,
+    text: "toss balls in here to earn the cheese",
+    size: 20,
+    rotation: -2,
+  },
   {
     x: 1000,
     y: LEVEL1_TOP + 40,
