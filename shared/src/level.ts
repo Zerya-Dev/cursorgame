@@ -37,6 +37,7 @@ export interface PressurePlate extends Rect {
   filter?: PlateFilter;
   /** requirement on the number of matching occupants; omitted = at least 1 */
   count?: PlateCountRule;
+  label?: string;
 }
 
 export interface ColorStation extends Rect {
@@ -64,10 +65,25 @@ const LOBBY_TOP = CORRIDOR_HEIGHT;
 const CORRIDOR_LEFT = (WORLD_WIDTH - CORRIDOR_WIDTH) / 2;
 const CORRIDOR_RIGHT = CORRIDOR_LEFT + CORRIDOR_WIDTH;
 
-// A full-width room at the far end of the corridor (the top of the map), carved out by
-// starting the corridor's flanking walls below it instead of right at the top wall.
+// Vertical layout down the corridor, top to bottom: a landing behind door "2"
+// (the goal), the button/trash room, Level 1's balance-plate room, then the
+// funnel down into the lobby. Every one of these sits *above* LOBBY_TOP, so
+// the lobby itself (and everything in it) keeps its original coordinates.
+const LANDING_BEYOND_DOOR2 = 150; // clearance above door "2", where the cheese sits
+const DOOR2_Y = T + LANDING_BEYOND_DOOR2;
+const STUB_DOOR2_TO_ROOM = 110;
+
 const ROOM_HEIGHT = 500;
-const ROOM_BOTTOM = T + ROOM_HEIGHT;
+const ROOM_TOP = DOOR2_Y + 30 + STUB_DOOR2_TO_ROOM;
+const ROOM_BOTTOM = ROOM_TOP + ROOM_HEIGHT;
+
+const STUB_ROOM_TO_LEVEL1 = 150;
+const LEVEL1_DOOR_Y = ROOM_BOTTOM + STUB_ROOM_TO_LEVEL1;
+const LEVEL1_TOP = LEVEL1_DOOR_Y + 30;
+const LEVEL1_HEIGHT = 500;
+const LEVEL1_BOTTOM = LEVEL1_TOP + LEVEL1_HEIGHT;
+const LEVEL1_LEFT = 500;
+const LEVEL1_RIGHT = 1500;
 
 // The lobby floor, bottom wall inner edge.
 const LOBBY_BOTTOM = WORLD_HEIGHT - T;
@@ -108,14 +124,48 @@ export const OBSTACLES: Obstacle[] = [
   { x: 0, y: 0, width: T, height: WORLD_HEIGHT },
   { x: WORLD_WIDTH - T, y: 0, width: T, height: WORLD_HEIGHT },
 
-  // Corridor funnel: narrows the room at the top into the corridor, which then
-  // widens back out into the lobby below.
-  { x: T, y: ROOM_BOTTOM, width: CORRIDOR_LEFT - T, height: LOBBY_TOP - ROOM_BOTTOM },
+  // Landing beyond door "2" -- the cheese's clearing.
+  { x: T, y: T, width: CORRIDOR_LEFT - T, height: DOOR2_Y - T },
+  { x: CORRIDOR_RIGHT, y: T, width: WORLD_WIDTH - T - CORRIDOR_RIGHT, height: DOOR2_Y - T },
+
+  // Corridor stub between door "2" and the button/trash room.
+  { x: T, y: DOOR2_Y + 30, width: CORRIDOR_LEFT - T, height: ROOM_TOP - (DOOR2_Y + 30) },
+  {
+    x: CORRIDOR_RIGHT,
+    y: DOOR2_Y + 30,
+    width: WORLD_WIDTH - T - CORRIDOR_RIGHT,
+    height: ROOM_TOP - (DOOR2_Y + 30),
+  },
+
+  // Button/trash room is full-width, carved out by starting the next funnel
+  // run below it instead of right after the stub above.
+
+  // Funnel from the button/trash room down to Level 1's door.
+  { x: T, y: ROOM_BOTTOM, width: CORRIDOR_LEFT - T, height: LEVEL1_TOP - ROOM_BOTTOM },
   {
     x: CORRIDOR_RIGHT,
     y: ROOM_BOTTOM,
     width: WORLD_WIDTH - T - CORRIDOR_RIGHT,
-    height: LOBBY_TOP - ROOM_BOTTOM,
+    height: LEVEL1_TOP - ROOM_BOTTOM,
+  },
+
+  // Level 1's room bulges wider than the corridor on both sides.
+  { x: T, y: LEVEL1_TOP, width: LEVEL1_LEFT - T, height: LEVEL1_BOTTOM - LEVEL1_TOP },
+  {
+    x: LEVEL1_RIGHT,
+    y: LEVEL1_TOP,
+    width: WORLD_WIDTH - T - LEVEL1_RIGHT,
+    height: LEVEL1_BOTTOM - LEVEL1_TOP,
+  },
+
+  // Corridor funnel: narrows Level 1's room back down into the corridor,
+  // which then widens back out into the lobby below.
+  { x: T, y: LEVEL1_BOTTOM, width: CORRIDOR_LEFT - T, height: LOBBY_TOP - LEVEL1_BOTTOM },
+  {
+    x: CORRIDOR_RIGHT,
+    y: LEVEL1_BOTTOM,
+    width: WORLD_WIDTH - T - CORRIDOR_RIGHT,
+    height: LOBBY_TOP - LEVEL1_BOTTOM,
   },
 
   // Colour room | main hall divider. Open gap (no door) -- you just walk in.
@@ -128,6 +178,17 @@ export const OBSTACLES: Obstacle[] = [
 ];
 
 export const DOORS: Door[] = [
+  // Guards the cheese landing at the very top; the trash plate below opens it.
+  { x: CORRIDOR_LEFT, y: DOOR2_Y, width: CORRIDOR_WIDTH, height: 30, id: "2", permanent: true },
+  // Guards Level 1's exit; the balance plates open it.
+  {
+    x: CORRIDOR_LEFT,
+    y: LEVEL1_DOOR_Y,
+    width: CORRIDOR_WIDTH,
+    height: 30,
+    id: "1",
+    permanent: true,
+  },
   // Sits exactly in the corridor funnel's gap (x = CORRIDOR_LEFT, width = CORRIDOR_WIDTH) so it
   // fully covers the opening -- previously this was offset from the funnel and left a sliver of
   // the "closed" gap always walkable.
@@ -144,9 +205,43 @@ export const DOORS: Door[] = [
   },
 ];
 
-// The real gate: 3 plates near the top of the main hall, all needed at once (each exact 1
-// player) to open door "0" into the corridor. Down from the old 10-plate wall.
 export const PLATES: PressurePlate[] = [
+  // Feed balls in here to open door "2" and reach the cheese.
+  {
+    id: "plate-trash",
+    x: 120,
+    y: ROOM_TOP + 100,
+    width: 280,
+    height: 300,
+    doorIds: [],
+    filter: { entityKind: "ball" },
+    label: "trash",
+  },
+
+  // Level 1: stand evenly split across both plates to open door "1".
+  {
+    id: "plate-level1-left",
+    x: LEVEL1_LEFT + 80,
+    y: LEVEL1_TOP + 100,
+    width: 300,
+    height: 300,
+    doorIds: ["1"],
+    filter: { entityKind: "player" },
+    count: { mode: "balance", withPlateId: "plate-level1-right" },
+  },
+  {
+    id: "plate-level1-right",
+    x: LEVEL1_RIGHT - 80 - 300,
+    y: LEVEL1_TOP + 100,
+    width: 300,
+    height: 300,
+    doorIds: ["1"],
+    filter: { entityKind: "player" },
+    count: { mode: "balance", withPlateId: "plate-level1-left" },
+  },
+
+  // The real gate: 3 plates near the top of the main hall, all needed at once (each exact 1
+  // player) to open door "0" into the corridor. Down from the old 10-plate wall.
   {
     id: "plate-gate-1",
     x: 850,
@@ -204,15 +299,13 @@ export const PLATES: PressurePlate[] = [
   },
 ];
 
+export const TRASH_PLATE_ID = "plate-trash";
+export const TRASH_DOOR_ID = "2";
+
 export const DOOR_RECTS: Record<string, Rect> = Object.fromEntries(
   DOORS.map((door) => [door.id, door]),
 );
 export const DOOR_IDS = DOORS.map((door) => door.id);
-
-/** Door opened by the button prank mechanic (not gated by plates) */
-export const TRASH_DOOR_ID = "trash";
-/** Plate that collects balls pushed onto it */
-export const TRASH_PLATE_ID = "plate-trash";
 
 // Moved off the open floor into their own room (west of the main hall).
 // Softer, hand-inked tones instead of screen-saturated primaries -- still
@@ -264,6 +357,14 @@ export const SLIDES: Slide[] = [
  * reads as part of the world. Coordinates are centres.
  */
 export const WORLD_TEXTS: WorldText[] = [
+  { x: 260, y: ROOM_TOP + 40, text: "toss balls in here to earn the cheese", size: 20, rotation: -2 },
+  {
+    x: 1000,
+    y: LEVEL1_TOP + 40,
+    text: "split evenly - half left, half right",
+    size: 24,
+    rotation: 1,
+  },
   { x: 1000, y: 2055, text: "You are a mouse.", size: 48, rotation: -2 },
   { x: 1000, y: 2260, text: "somewhere up there, there is cheese", size: 24, rotation: 1 },
   { x: 1000, y: 2320, text: "three plates. three mice. the door listens.", size: 22, rotation: -1 },
@@ -338,16 +439,17 @@ export const DECORATIONS: DecorDef[] = [
 
 /**
  * The goal. Kept as named level data rather than a special case in the scene,
- * because more stages are planned after this one.
+ * because more stages are planned after this one. Sits in the landing beyond
+ * door "2", which the trash plate opens.
  */
 export const CHEESE = { x: WORLD_WIDTH / 2, y: T + 110, size: 96 };
 
 export interface ButtonDef extends Rect {}
 
-// centered in the room at the top of the corridor, past door "0" and the plate puzzle
+// centered in the button/trash room, past door "2" and the trash plate
 export const BUTTON: ButtonDef = {
   x: WORLD_WIDTH / 2 - 110,
-  y: T + ROOM_HEIGHT / 2 - 70,
+  y: ROOM_TOP + ROOM_HEIGHT / 2 - 70,
   width: 220,
   height: 140,
 };
@@ -368,20 +470,10 @@ export const ENTITY_KINDS: Record<string, EntityKindConfig> = {
     colorable: true,
     pressesPlates: true,
   },
-  // boulder: {
-  //   friction: 6,
-  //   restitution: 0.15,
-  //   maxSpeed: 400,
-  //   pushTransfer: 0.5,
-  //   colorable: false,
-  //   pressesPlates: true,
-  // },
 };
 
 export const ENTITIES: EntityDef[] = [
   // A barrel dwarfs a mouse -- not to real scale, but the size gap has to read. Sits well
   // clear of SPAWN_POINT (which lands ~250px north of it) and every wall.
   { kind: "ball", id: "ball-main", x: 1000, y: 3150, radius: 46, color: "#e0e0e0" },
-  // { kind: "ball", id: "ball-small", x: 500, y: 2700, radius: 14, color: "#f97316" },
-  // { kind: "boulder", id: "boulder-1", x: 1100, y: 2700, radius: 30, color: "#8b8b9e" },
 ];
