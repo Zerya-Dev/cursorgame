@@ -33,6 +33,8 @@ export class MainRoom extends Room {
       if (!Number.isFinite(message.x) || !Number.isFinite(message.y)) return;
       player.x = Math.max(12, Math.min(3188, message.x));
       player.y = Math.max(12, Math.min(2388, message.y));
+      const station = COLOR_STATIONS.find((candidate) => overlapsRect(player, candidate));
+      if (station) player.color = station.color;
       this.updateGameplay();
     },
     setColor: (client: Client, message: { color?: unknown }) => {

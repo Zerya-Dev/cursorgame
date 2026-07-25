@@ -407,9 +407,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private overlaps(rect: ColorStation) {
-    const margin = 6;
-    const cx = Phaser.Math.Clamp(this.cursor.x, rect.x - margin, rect.x + rect.width + margin);
-    const cy = Phaser.Math.Clamp(this.cursor.y, rect.y - margin, rect.y + rect.height + margin);
+    const cx = Phaser.Math.Clamp(this.cursor.x, rect.x, rect.x + rect.width);
+    const cy = Phaser.Math.Clamp(this.cursor.y, rect.y, rect.y + rect.height);
     return (this.cursor.x - cx) ** 2 + (this.cursor.y - cy) ** 2 < this.radius ** 2;
   }
 
