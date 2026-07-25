@@ -12,7 +12,7 @@ interface DoorRuntime {
 }
 
 interface RemotePlayer {
-  cursor: Phaser.GameObjects.Arc;
+  cursor: Phaser.GameObjects.Image;
   target: Phaser.Math.Vector2;
   trailAnchor: Phaser.Math.Vector2;
   color: number;
@@ -31,7 +31,7 @@ interface PlateRuntime {
  * follows it around the world. Press Esc to release the pointer.
  */
 export class GameScene extends Phaser.Scene {
-  private cursor!: Phaser.GameObjects.Arc;
+  private cursor!: Phaser.GameObjects.Image;
   private velocity = new Phaser.Math.Vector2();
   private pendingInput = new Phaser.Math.Vector2();
   private localTrailAnchor = new Phaser.Math.Vector2();
@@ -56,6 +56,14 @@ export class GameScene extends Phaser.Scene {
     super("GameScene");
   }
 
+  preload() {
+    // Force Phaser to render the SVG at a specific size (e.g., 48x48 for a sharp cursor)
+    this.load.svg('cursorIcon', 'assets/cursor-alt-svgrepo-com.svg', {
+      width: 48,
+      height: 48
+    });
+  }
+
   create() {
     this.physics?.world?.setBounds?.(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
@@ -68,8 +76,8 @@ export class GameScene extends Phaser.Scene {
 
     const startX = WORLD_WIDTH / 2;
     const startY = WORLD_HEIGHT / 2;
-    this.cursor = this.add.circle(startX, startY, this.radius, 0x4ade80);
-    this.cursor.setStrokeStyle(3, 0xffffff);
+    this.cursor = this.add.image(startX, startY, 'cursorIcon');
+    this.cursor.setTint(this.localColor);
     this.cursor.setDepth(10);
     this.localTrailAnchor.set(startX, startY);
 
@@ -190,8 +198,8 @@ export class GameScene extends Phaser.Scene {
 
       let remote = this.remotePlayers.get(sessionId);
       if (!remote) {
-        const cursor = this.add.circle(player.x, player.y, this.radius, color);
-        cursor.setStrokeStyle(3, 0xffffff).setDepth(9);
+        const cursor = this.add.image(player.x, player.y, 'cursorIcon')
+        cursor.setTint(color);
         remote = {
           cursor,
           target: new Phaser.Math.Vector2(player.x, player.y),
@@ -202,7 +210,7 @@ export class GameScene extends Phaser.Scene {
       }
       remote.target.set(player.x, player.y);
       remote.color = color;
-      remote.cursor.setFillStyle(color);
+      remote.cursor.setTint(color);
     });
 
     for (const [sessionId, remote] of this.remotePlayers) {
@@ -398,10 +406,15 @@ export class GameScene extends Phaser.Scene {
   private updateColorStation() {
     const station = COLOR_STATIONS.find((candidate) => this.overlaps(candidate));
     if (station?.color === this.activeColorStation) return;
+
     this.activeColorStation = station?.color;
+
     if (station) {
       this.localColor = this.parseColor(station.color);
-      this.cursor.setFillStyle(this.localColor);
+
+      // APPLY THE COLOR TO THE SVG HERE:
+      this.cursor.setTint(this.localColor);
+
       this.multiplayer?.setColor(station.color);
     }
   }
