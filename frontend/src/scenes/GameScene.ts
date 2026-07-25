@@ -44,9 +44,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.svg('cursorIcon', 'assets/cursor-alt-svgrepo-com.svg', {
+    this.load.svg("cursorIcon", "assets/cursor-alt-svgrepo-com.svg", {
       width: 48,
-      height: 48
+      height: 48,
     });
   }
 
@@ -58,18 +58,18 @@ export class GameScene extends Phaser.Scene {
     const { doors, plates } = buildInteractables(this);
     this.doors = doors;
     this.plates = plates;
-	buildLavaZones(this, LAVA_ZONES);
+    buildLavaZones(this, LAVA_ZONES);
     this.renderPlayers = new RenderPlayers(this);
 
     this.touchNavigation = window.matchMedia("(pointer: coarse)").matches;
 
     const startX = WORLD_WIDTH / 2;
     const startY = WORLD_HEIGHT / 2;
-    this.cursorOutline = this.add.image(startX, startY, 'cursorIcon');
+    this.cursorOutline = this.add.image(startX, startY, "cursorIcon");
     this.cursorOutline.setTint(0xffffff); // White outline
-    this.cursorOutline.setScale(1.2);   // Slightly larger than original
+    this.cursorOutline.setScale(1.2); // Slightly larger than original
     this.cursorOutline.setDepth(9);
-    this.cursor = this.add.image(startX, startY, 'cursorIcon');
+    this.cursor = this.add.image(startX, startY, "cursorIcon");
     this.cursor.setTint(this.localColor);
     this.cursor.setDepth(10);
 
@@ -193,7 +193,7 @@ export class GameScene extends Phaser.Scene {
     const cursorFromY = this.cursor.y;
     moveAndCollide(this.cursor, this.velocity, this.radius, dx, dy, solids);
 
-	this.updateLava();
+    this.updateLava();
 
     this.renderPlayers.update(dt);
     this.updateEntities(dt, {

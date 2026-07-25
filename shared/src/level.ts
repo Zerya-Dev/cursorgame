@@ -95,7 +95,11 @@ export const COLOR_STATIONS: ColorStation[] = [
 
 export const LAVA_ZONES: LavaZone[] = [
   {
-    x: 1600, y: 1450, width: 150, height: 100, teleportTo: { x: 1650, y: 1250 },
+    x: 1600,
+    y: 1450,
+    width: 150,
+    height: 100,
+    teleportTo: { x: 1650, y: 1250 },
   },
 ];
 

@@ -32,7 +32,7 @@ export class MainRoom extends Room {
       const station = COLOR_STATIONS.find(({ color }) => color === message.color);
       if (station && this.playerOverlaps(player, station)) player.color = station.color;
     },
-  }
+  };
 
   onCreate() {
     for (const id of DOOR_IDS) {

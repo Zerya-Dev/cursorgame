@@ -27,7 +27,10 @@ export class RenderPlayers {
       const color = parseColor(player.color);
       let remote = this.players.get(sessionId);
       if (!remote) {
-        const cursor = this.scene.add.image(player.x, player.y, "cursorIcon").setTint(color).setDepth(9);
+        const cursor = this.scene.add
+          .image(player.x, player.y, "cursorIcon")
+          .setTint(color)
+          .setDepth(9);
         // const cursor = this.scene.add.circle(player.x, player.y, this.radius, color);
         remote = {
           cursor,
