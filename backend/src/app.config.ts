@@ -52,7 +52,7 @@ const server = defineServer({
         res.sendFile(path.join(frontendDist, "index.html"));
       });
     }
-  }
+  },
 });
 
 export default server;
