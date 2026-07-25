@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import type { LavaZone } from "../level";
+import type { LavaZone } from "@shared";
 
 /**
  * copied from color.ts a bit...

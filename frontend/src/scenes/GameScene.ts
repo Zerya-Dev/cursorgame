@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { WORLD_HEIGHT, WORLD_WIDTH } from "../config";
+import { WORLD_HEIGHT, WORLD_WIDTH } from "@shared";
 import { COLOR_STATIONS, LAVA_ZONES, OBSTACLES, PLAYER_RADIUS } from "@shared";
 import type { Rect } from "@shared";
 import { moveAndCollide } from "../gameplay/collision";
@@ -59,7 +59,7 @@ export class GameScene extends Phaser.Scene {
     this.doors = doors;
     this.plates = plates;
 	buildLavaZones(this, LAVA_ZONES);
-    this.renderPlayers = new RenderPlayers(this, this.radius);
+    this.renderPlayers = new RenderPlayers(this);
 
     this.touchNavigation = window.matchMedia("(pointer: coarse)").matches;
 
