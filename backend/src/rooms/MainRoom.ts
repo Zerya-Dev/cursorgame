@@ -2,7 +2,16 @@ import { Room, Client, CloseCode } from "colyseus";
 import { MainRoomState } from "./schema/MainRoomState.js";
 import { Door, Player, PressurePlate } from "./schema/GeneralSchemas.js";
 import { World } from "../game/World.js";
-import { COLOR_STATIONS, DOOR_IDS, PLATES, PLAYER_RADIUS, circleOverlapsRect } from "@shared";
+import {
+  COLOR_STATIONS,
+  DOOR_IDS,
+  PLATES,
+  PLAYER_RADIUS,
+  SPAWN_POINT,
+  WORLD_HEIGHT,
+  WORLD_WIDTH,
+  circleOverlapsRect,
+} from "@shared";
 import type { Rect } from "@shared";
 
 const DOOR_HOLD_MS = 1;
@@ -20,8 +29,8 @@ export class MainRoom extends Room {
       const player = this.state.players.get(client.sessionId);
       if (!player || typeof message.x !== "number" || typeof message.y !== "number") return;
       if (!Number.isFinite(message.x) || !Number.isFinite(message.y)) return;
-      player.x = Math.max(12, Math.min(3188, message.x));
-      player.y = Math.max(12, Math.min(2388, message.y));
+      player.x = Math.max(PLAYER_RADIUS, Math.min(WORLD_WIDTH - PLAYER_RADIUS, message.x));
+      player.y = Math.max(PLAYER_RADIUS, Math.min(WORLD_HEIGHT - PLAYER_RADIUS, message.y));
       const station = COLOR_STATIONS.find((candidate) => this.playerOverlaps(player, candidate));
       if (station) player.color = station.color;
       this.updateGameplay();
@@ -84,8 +93,8 @@ export class MainRoom extends Room {
   onJoin(client: Client) {
     const player = new Player();
     player.name = "TestPlayer_" + client.sessionId;
-    player.x = 0;
-    player.y = 0;
+    player.x = SPAWN_POINT.x;
+    player.y = SPAWN_POINT.y;
     this.state.players.set(client.sessionId, player);
     console.log(client.sessionId, "joined!");
   }
