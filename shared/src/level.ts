@@ -244,7 +244,7 @@ export const PLATES: PressurePlate[] = [
   // player) to open door "0" into the corridor. Down from the old 10-plate wall.
   {
     id: "plate-gate-1",
-    x: 850,
+    x: 805,
     y: 2150,
     width: 100,
     height: 100,
@@ -254,7 +254,7 @@ export const PLATES: PressurePlate[] = [
   },
   {
     id: "plate-gate-2",
-    x: 1000,
+    x: 955,
     y: 2150,
     width: 100,
     height: 100,
@@ -264,7 +264,7 @@ export const PLATES: PressurePlate[] = [
   },
   {
     id: "plate-gate-3",
-    x: 1150,
+    x: 1105,
     y: 2150,
     width: 100,
     height: 100,
@@ -371,15 +371,13 @@ export const WORLD_TEXTS: WorldText[] = [
     size: 24,
     rotation: 1,
   },
-  { x: 1000, y: 2055, text: "You are a mouse.", size: 48, rotation: -2 },
-  { x: 1000, y: 2260, text: "somewhere up there, there is cheese", size: 24, rotation: 1 },
-  { x: 1000, y: 2320, text: "three plates. three mice. the door listens.", size: 22, rotation: -1 },
-  { x: 620, y: 2440, text: "through here: paint", size: 24, rotation: 2 },
+  { x: 1000, y: 2070, text: "the cheese is a lie.", size: 48, rotation: -2 },
+  { x: 292, y: 3300, text: "look! a droga szybkiego ruchu!", size: 24, rotation: 2 },
   { x: 270, y: 2200, text: "pick a colour", size: 28, rotation: -3 },
-  { x: 1310, y: 2470, text: "try the plates here. nothing bad happens.", size: 22, rotation: 1 },
-  { x: 1750, y: 2150, text: "no cheese in here. just practice.", size: 24, rotation: -2 },
-  { x: 1000, y: 2960, text: "push the barrel around. it helps. probably.", size: 22, rotation: 2 },
-  { x: 1000, y: 3050, text: "the exit needs three mice, not one", size: 20, rotation: -1 },
+  { x: 1270, y: 2470, text: "try the pressure plates here. nothing bad happens.", size: 22, rotation: 1 },
+  { x: 1750, y: 2150, text: "no cheese in here :((", size: 24, rotation: -2 },
+  { x: 1000, y: 2960, text: "you - are - a - mouse", size: 22, rotation: 2 },
+  { x: 1000, y: 3050, text: "try to push this around while you wait for others v", size: 20, rotation: -1 },
 ];
 
 export interface DecorDef {
@@ -394,9 +392,6 @@ export interface DecorDef {
 
 /** Purely cosmetic props. Never collide -- they are not part of OBSTACLES. */
 export const DECORATIONS: DecorDef[] = [
-  // Welcome mat under the corridor exit, in the strip between door "0" and the gate plates.
-  { sprite: "carpet", x: 1000, y: 2040, size: 80, rotation: 0 },
-
   // Main hall, west pocket (between the colour-room wall and the gate/practice plates).
   { sprite: "crate", x: 650, y: 2350, size: 70, rotation: 4 },
   { sprite: "barrels", x: 680, y: 2450, size: 85, rotation: -6 },
