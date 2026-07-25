@@ -24,6 +24,7 @@ COPY --from=builder --chown=node:node /app/backend/node_modules ./backend/node_m
 COPY --from=builder --chown=node:node /app/backend/package.json ./backend/package.json
 COPY --from=builder --chown=node:node /app/backend/build ./backend/build
 COPY --from=builder --chown=node:node /app/frontend/dist ./frontend/dist
+COPY --from=builder --chown=node:node /app/frontend/assets ./frontend/assets
 
 USER node
 EXPOSE 2567
