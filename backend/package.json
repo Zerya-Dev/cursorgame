@@ -1,13 +1,16 @@
 {
-  "private": true,
   "name": "cursorgame-server",
   "version": "0.0.1",
+  "private": true,
   "description": "npm init template for bootstrapping an empty Colyseus project",
+  "homepage": "https://github.com/Zerya-Dev/cursorgame/",
+  "bugs": {
+    "url": "https://github.com/Zerya-Dev/cursorgame/issues"
+  },
+  "license": "",
+  "author": "",
   "type": "module",
   "main": "build/index.js",
-  "engines": {
-    "node": ">= 20.9.0"
-  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx watch src/index.ts",
@@ -16,12 +19,14 @@
     "clean": "rimraf build",
     "test": "mocha -r tsx test/**.test.ts --exit --timeout 15000"
   },
-  "author": "",
-  "license": "",
-  "bugs": {
-    "url": "https://github.com/Zerya-Dev/cursorgame/issues"
+  "dependencies": {
+    "@colyseus/auth": "^0.17.9",
+    "@colyseus/schema": "^4.0.0",
+    "@colyseus/tools": "^0.17.0",
+    "colyseus": "^0.17.6",
+    "express": "^4.18.2",
+    "express-basic-auth": "^1.2.1"
   },
-  "homepage": "https://github.com/Zerya-Dev/cursorgame/",
   "devDependencies": {
     "@colyseus/loadtest": "^0.17.7",
     "@colyseus/sdk": "^0.17.17",
@@ -34,12 +39,7 @@
     "tsx": "^4.21.0",
     "typescript": "^5.0.4"
   },
-  "dependencies": {
-    "@colyseus/auth": "^0.17.9",
-    "@colyseus/schema": "^4.0.0",
-    "@colyseus/tools": "^0.17.0",
-    "colyseus": "^0.17.6",
-    "express": "^4.18.2",
-    "express-basic-auth": "^1.2.1"
+  "engines": {
+    "node": ">= 20.9.0"
   }
 }
