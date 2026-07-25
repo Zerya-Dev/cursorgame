@@ -55,6 +55,10 @@ const server = defineServer({
             res.send("It's time to kick ass and chew bubblegum!");
         });
 
+        app.get('/assets/:file', (req, res, next) => {
+            res.sendFile(path.join(fileURLToPath(new URL("../../frontend/assets", import.meta.url)), req.params.file));
+        });
+
         /**
          * Use @colyseus/monitor
          * It is recommended to protect this route with a password
