@@ -3,7 +3,7 @@ import type { RoomState } from "../network/state";
 import { parseColor } from "./color";
 
 interface RemotePlayer {
-  cursor: Phaser.GameObjects.Arc;
+  cursor: Phaser.GameObjects.Image;
   target: Phaser.Math.Vector2;
   trailAnchor: Phaser.Math.Vector2;
   color: number;
@@ -15,10 +15,7 @@ const SNAP_DISTANCE = 400;
 export class RenderPlayers {
   private players = new Map<string, RemotePlayer>();
 
-  constructor(
-    private readonly scene: Phaser.Scene,
-    private readonly radius: number,
-  ) {}
+  constructor(private readonly scene: Phaser.Scene) {}
 
   sync(state: RoomState, localSessionId: string) {
     const active = new Set<string>();
@@ -30,7 +27,8 @@ export class RenderPlayers {
       const color = parseColor(player.color);
       let remote = this.players.get(sessionId);
       if (!remote) {
-        const cursor = this.scene.add.circle(player.x, player.y, this.radius, color);
+        const cursor = this.scene.add.image(player.x, player.y, "cursorIcon").setTint(color).setDepth(9);
+        // const cursor = this.scene.add.circle(player.x, player.y, this.radius, color);
         remote = {
           cursor,
           target: new Phaser.Math.Vector2(player.x, player.y),
@@ -41,7 +39,7 @@ export class RenderPlayers {
       }
       remote.target.set(player.x, player.y);
       remote.color = color;
-      remote.cursor.setFillStyle(color);
+      remote.cursor.setTint(color);
     });
 
     for (const [sessionId, remote] of this.players) {
