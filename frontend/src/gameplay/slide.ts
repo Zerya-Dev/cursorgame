@@ -90,11 +90,7 @@ function buildChevrons(
 
     for (let travelled = spacing / 2; travelled < length; travelled += spacing) {
       const arrow = scene.add
-        .image(
-          from.x + Math.cos(angle) * travelled,
-          from.y + Math.sin(angle) * travelled,
-          "arrow",
-        )
+        .image(from.x + Math.cos(angle) * travelled, from.y + Math.sin(angle) * travelled, "arrow")
         .setDisplaySize(CHUTE * 0.62, CHUTE * 0.62)
         .setRotation(angle + Math.PI / 2)
         .setAlpha(0.7)

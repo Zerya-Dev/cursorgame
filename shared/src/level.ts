@@ -27,7 +27,8 @@ export type PlateCountRule =
   | { mode: "atLeast"; value: number }
   | { mode: "exact"; value: number }
   | { mode: "even" }
-  | { mode: "allPlayers" };
+  | { mode: "allPlayers" }
+  | { mode: "balance"; withPlateId: string; maxDifference?: number };
 
 export interface PressurePlate extends Rect {
   id: string;
@@ -207,6 +208,11 @@ export const DOOR_RECTS: Record<string, Rect> = Object.fromEntries(
   DOORS.map((door) => [door.id, door]),
 );
 export const DOOR_IDS = DOORS.map((door) => door.id);
+
+/** Door opened by the button prank mechanic (not gated by plates) */
+export const TRASH_DOOR_ID = "trash";
+/** Plate that collects balls pushed onto it */
+export const TRASH_PLATE_ID = "plate-trash";
 
 // Moved off the open floor into their own room (west of the main hall).
 // Softer, hand-inked tones instead of screen-saturated primaries -- still

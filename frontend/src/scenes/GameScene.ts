@@ -360,7 +360,11 @@ export class GameScene extends Phaser.Scene {
   /** swap the avatar's linework so which button is down is visible on the mouse itself */
   private setClicking(button: "left" | "right" | null) {
     this.cursorOutline.setTexture(
-      button === "left" ? "mouseInkClickLeft" : button === "right" ? "mouseInkClickRight" : "mouseInk",
+      button === "left"
+        ? "mouseInkClickLeft"
+        : button === "right"
+          ? "mouseInkClickRight"
+          : "mouseInk",
     );
     this.tweens.killTweensOf([this.cursor, this.cursorOutline]);
     this.tweens.add({

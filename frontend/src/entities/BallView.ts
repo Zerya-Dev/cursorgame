@@ -43,10 +43,9 @@ export class BallView implements EntityView {
     // A colour disc under the ink barrel: the pack art is black linework, and
     // setTint multiplies, so tinting the sprite itself would do nothing.
     this.body = scene.add.circle(0, 0, state.radius * 0.82, this.fillColor, 0.85);
-    const barrel = scene.add.image(0, 0, "barrel").setDisplaySize(
-      state.radius * 2.4,
-      state.radius * 2.4,
-    );
+    const barrel = scene.add
+      .image(0, 0, "barrel")
+      .setDisplaySize(state.radius * 2.4, state.radius * 2.4);
     this.container = scene.add.container(state.x, state.y, [this.body, barrel]);
     this.container.setDepth(6);
   }

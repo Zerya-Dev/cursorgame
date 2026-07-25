@@ -385,20 +385,25 @@ export function buildInteractables(scene: Phaser.Scene) {
 
     const iconSize = Math.min(def.width, def.height) * 0.3;
     const rowY = def.y + def.height - iconSize * 0.75;
+    const iconKey = plateIcon(def.filter?.entityKind);
 
-    const icon = scene.add
-      .image(cx - iconSize * 0.55, rowY, plateIcon(def.filter?.entityKind))
-      .setDisplaySize(iconSize, iconSize)
-      .setDepth(3);
-    if (def.filter?.color) icon.setTint(parseColor(def.filter.color));
+    let icon: Phaser.GameObjects.Image | undefined;
+    if (iconKey && typeof iconKey === "string") {
+      icon = scene.add
+        .image(cx - iconSize * 0.55, rowY, iconKey)
+        .setDisplaySize(iconSize, iconSize)
+        .setDepth(3);
+      if (def.filter?.color) icon.setTint(parseColor(def.filter.color));
+    }
 
+    // Without an icon (anything counts) the count reads alone, centred.
     const countLabel = scene.add
-      .text(cx + iconSize * 0.35, rowY, plateCountLabel(def.count), {
+      .text(icon ? cx + iconSize * 0.35 : cx, rowY, plateCountLabel(def.count), {
         fontFamily: FONT_HAND,
         fontSize: `${Math.round(iconSize * 0.95)}px`,
         color: INK_SOFT_CSS,
       })
-      .setOrigin(0, 0.5)
+      .setOrigin(icon ? 0 : 0.5, 0.5)
       .setDepth(3);
 
     return { def, active: false, glow, plate, icon, countLabel };
@@ -447,7 +452,13 @@ export function buildInteractables(scene: Phaser.Scene) {
       .setDisplaySize(station.width * 1.35, station.height * 1.35)
       .setDepth(1);
     scene.add
-      .circle(cx, cy, Math.min(station.width, station.height) * 0.36, parseColor(station.color), 0.9)
+      .circle(
+        cx,
+        cy,
+        Math.min(station.width, station.height) * 0.36,
+        parseColor(station.color),
+        0.9,
+      )
       .setDepth(2);
     scene.add
       .text(cx, station.y + station.height + 10, station.label, {
