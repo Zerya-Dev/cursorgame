@@ -33,7 +33,7 @@ const DOOR_HOLD_MS = 600;
 const TICK_MS = 20;
 
 export class MainRoom extends Room {
-  maxClients = 10; // matches the 10 lobby plates so every player can claim a slot
+  maxClients = 40;
   patchRate = 20;
   state = new MainRoomState();
   private doorOpenUntil = new Map<string, number>();
@@ -49,7 +49,6 @@ export class MainRoom extends Room {
       player.y = Math.max(PLAYER_RADIUS, Math.min(WORLD_HEIGHT - PLAYER_RADIUS, message.y));
       const station = COLOR_STATIONS.find((candidate) => this.playerOverlaps(player, candidate));
       if (station) player.color = station.color;
-      this.updateGameplay();
     },
     setColor: (client: Client, message: { color?: unknown }) => {
       const player = this.state.players.get(client.sessionId);
@@ -124,16 +123,31 @@ export class MainRoom extends Room {
     }, TICK_MS);
   }
 
-  onJoin(client: Client) {
+  onJoin(client: Client, options: { color?: unknown }) {
     const player = new Player();
     player.name = "TestPlayer_" + client.sessionId;
     player.x = SPAWN_POINT.x;
     player.y = SPAWN_POINT.y;
+    if (
+      typeof options.color === "string" &&
+      COLOR_STATIONS.some((station) => station.color === options.color)
+    ) {
+      player.color = options.color;
+    }
     this.state.players.set(client.sessionId, player);
     console.log(client.sessionId, "joined!");
   }
 
-  onLeave(client: Client, code: CloseCode) {
+  async onLeave(client: Client, code: CloseCode) {
+    if (code !== CloseCode.CONSENTED) {
+      try {
+        await this.allowReconnection(client, 10);
+        console.log(client.sessionId, "reconnected!");
+        return;
+      } catch {
+        // The grace period expired; remove the abandoned player below.
+      }
+    }
     this.state.players.delete(client.sessionId);
     this.world.forgetPlayer(client.sessionId);
     this.updateGameplay();

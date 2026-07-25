@@ -11,6 +11,10 @@ export function getClient(): Client {
   return client;
 }
 
-export async function joinRoom(): Promise<Room<RoomState>> {
-  return getClient().joinOrCreate<RoomState>(ROOM_NAME);
+export interface JoinOptions {
+  color?: string;
+}
+
+export async function joinRoom(options: JoinOptions = {}): Promise<Room<RoomState>> {
+  return getClient().joinOrCreate<RoomState>(ROOM_NAME, options);
 }
