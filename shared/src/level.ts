@@ -119,14 +119,14 @@ export const WORLD_TEXTS: WorldText[] = [
 ];
 
 export const ENTITY_KINDS: Record<string, EntityKindConfig> = {
-  // ball: {
-  //   friction: 2.2,
-  //   restitution: 0.45,
-  //   maxSpeed: 1100,
-  //   pushTransfer: 1.2,
-  //   colorable: true,
-  //   pressesPlates: true,
-  // },
+  ball: {
+    friction: 2.2,
+    restitution: 0.45,
+    maxSpeed: 1100,
+    pushTransfer: 1.2,
+    colorable: true,
+    pressesPlates: true,
+  },
   // boulder: {
   //   friction: 6,
   //   restitution: 0.15,
@@ -138,7 +138,7 @@ export const ENTITY_KINDS: Record<string, EntityKindConfig> = {
 };
 
 export const ENTITIES: EntityDef[] = [
-  // { kind: "ball", id: "ball-main", x: 800, y: 2800, radius: 20, color: "#e0e0e0" },
+  { kind: "ball", id: "ball-main", x: 639, y: 2200, radius: 20, color: "#e0e0e0" },
   // { kind: "ball", id: "ball-small", x: 500, y: 2700, radius: 14, color: "#f97316" },
   // { kind: "boulder", id: "boulder-1", x: 1100, y: 2700, radius: 30, color: "#8b8b9e" },
 ];
