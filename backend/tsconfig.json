@@ -6,7 +6,6 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowJs": true,
-    "strictNullChecks": false,
     "experimentalDecorators": true,
     "useDefineForClassFields": false
   },

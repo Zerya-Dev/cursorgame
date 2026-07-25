@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "pnpm --parallel --filter cursorgame-server --filter cursorgame-frontend dev",
     "docker:build": "docker build -t cursorgame .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check ."
   },
   "keywords": [],
   "author": "",
@@ -18,5 +22,10 @@
       "onFail": "download"
     }
   },
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "oxfmt": "^0.60.0",
+    "oxlint": "^1.75.0",
+    "oxlint-tsgolint": "^7.0.2001"
+  }
 }
