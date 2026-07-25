@@ -57,7 +57,6 @@ export class GameScene extends Phaser.Scene {
   private localColor = 0x4ade80;
   private pointerLocked = false;
   private status!: Phaser.GameObjects.Text;
-  private coordsLabel!: Phaser.GameObjects.Text;
   private doors: DoorRuntime[] = [];
   private plates: PlateRuntime[] = [];
   private movingWalls: MovingWallRuntime[] = [];
@@ -131,12 +130,6 @@ export class GameScene extends Phaser.Scene {
       .text(16, 14, "", { fontFamily: FONT_HAND, fontSize: "22px", color: INK_SOFT_CSS })
       .setScrollFactor(0)
       .setDepth(1000);
-
-    this.coordsLabel = this.add
-      .text(0, 0, "", { fontFamily: "monospace", fontSize: "12px", color: INK_SOFT_CSS })
-      .setScrollFactor(0)
-      .setDepth(1000)
-      .setVisible(false);
 
     if (this.touchNavigation) this.updateHint();
 
@@ -235,17 +228,6 @@ export class GameScene extends Phaser.Scene {
         this.pendingInput.set(0, 0);
         this.velocity.set(0, 0);
       }
-    }
-
-    if (!locked && !this.touchNavigation) {
-      const pointer = this.input.activePointer;
-      const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-      this.coordsLabel
-        .setText(`${Math.round(world.x)}, ${Math.round(world.y)}`)
-        .setPosition(pointer.x + 14, pointer.y + 14)
-        .setVisible(true);
-    } else {
-      this.coordsLabel.setVisible(false);
     }
 
     const dt = Math.min(deltaMs / 1000, 0.05);
