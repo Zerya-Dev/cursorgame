@@ -12,6 +12,9 @@ import {
  */
 import { MainRoom } from "./rooms/MainRoom.js";
 import basicAuth from "express-basic-auth";
+import express from "express";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const basicAuthMiddleware = basicAuth({
     users: { "admin": "admin" },
@@ -44,6 +47,11 @@ const server = defineServer({
      * Read more: https://expressjs.com/en/starter/basic-routing.html
      */
     express: (app) => {
+        const frontendDist = fileURLToPath(new URL("../../frontend/dist", import.meta.url));
+        if (process.env.NODE_ENV === "production") {
+            app.use(express.static(frontendDist));
+        }
+
         app.get("/hi", (req, res) => {
             res.send("It's time to kick ass and chew bubblegum!");
         });
@@ -61,6 +69,8 @@ const server = defineServer({
          */
         if (process.env.NODE_ENV !== "production") {
             app.use("/", playground());
+        } else {
+            app.get("*", (_req, res) => res.sendFile(path.join(frontendDist, "index.html")));
         }
     }
 

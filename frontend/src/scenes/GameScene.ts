@@ -1,13 +1,21 @@
 import Phaser from "phaser";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../config";
-import { DOORS, OBSTACLES, PLATES } from "../level";
-import type { Door, Obstacle, PressurePlate } from "../level";
+import { COLOR_STATIONS, DOORS, OBSTACLES, PLATES } from "../level";
+import type { ColorStation, Door, Obstacle, PressurePlate } from "../level";
+import { MultiplayerClient } from "../network/MultiplayerClient";
+import type { RoomState } from "../network/state";
 
 interface DoorRuntime {
   def: Door;
   solid: boolean;
-  openUntil: number; // timestamp until which the door stays open after release
   rect: Phaser.GameObjects.Rectangle;
+}
+
+interface RemotePlayer {
+  cursor: Phaser.GameObjects.Arc;
+  target: Phaser.Math.Vector2;
+  trailAnchor: Phaser.Math.Vector2;
+  color: number;
 }
 
 interface PlateRuntime {
@@ -26,29 +34,19 @@ export class GameScene extends Phaser.Scene {
   private cursor!: Phaser.GameObjects.Arc;
   private velocity = new Phaser.Math.Vector2();
   private pendingInput = new Phaser.Math.Vector2();
-  private trailAnchor = new Phaser.Math.Vector2();
+  private localTrailAnchor = new Phaser.Math.Vector2();
+  private localColor = 0x4ade80;
   private pointerLocked = false;
   private hint!: Phaser.GameObjects.Text;
   private doors: DoorRuntime[] = [];
   private plates: PlateRuntime[] = [];
-
-  // How long a door stays open after its plate is released, so a single player
-  // can step off and still make it through.
-  private readonly doorHoldMs = 1200;
-
-  // Radius of the cursor circle, used for collision.
+  private multiplayer?: MultiplayerClient;
+  private remotePlayers = new Map<string, RemotePlayer>();
+  private activeColorStation?: string;
   private readonly radius = 12;
-
-  /**
-   * Mouse movement is fed into a quickly decaying velocity instead of an
-   * invisible target. Every mouse pixel still produces `sensitivity` world
-   * pixels in total, but that distance is spread over a short period. This
-   * turns bursty touchpad events into continuous motion without making a mouse
-   * feel floaty.
-   */
   private readonly sensitivity = 0.82;
-  private readonly movementResponse = 14; // higher = sharper braking
-  private readonly maxSpeed = 1400; // world pixels per second
+  private readonly movementResponse = 14;
+  private readonly maxSpeed = 1400;
   private readonly trailSpacing = 10;
 
   constructor() {
@@ -56,30 +54,24 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
-    // The world (and the camera) span the full large map.
     this.physics?.world?.setBounds?.(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
     this.drawLevel();
     this.buildGameplay();
 
-    // Hide the OS cursor so only the in-game one is visible.
     this.input.setDefaultCursor("none");
 
-    // Start in the middle of the world.
     const startX = WORLD_WIDTH / 2;
     const startY = WORLD_HEIGHT / 2;
     this.cursor = this.add.circle(startX, startY, this.radius, 0x4ade80);
     this.cursor.setStrokeStyle(3, 0xffffff);
     this.cursor.setDepth(10);
-    this.trailAnchor.set(startX, startY);
+    this.localTrailAnchor.set(startX, startY);
 
-    // The player already has smooth motion, so the camera should stay close
-    // instead of adding another heavy layer of lag.
     this.cameras.main.startFollow(this.cursor, true, 0.35, 0.35);
     this.cameras.main.setDeadzone(100, 80);
 
-    // On-screen hint, pinned to the camera (not the world).
     this.hint = this.add
       .text(12, 12, "Click to catch the cursor", {
         fontFamily: "monospace",
@@ -89,15 +81,12 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(1000);
 
-    // Click anywhere to request pointer lock ("catch" the cursor).
     this.input.on("pointerdown", () => {
       if (!this.input.mouse?.locked) {
         this.input.mouse?.requestPointerLock();
       }
     });
 
-    // Pointer events can be irregular on touchpads, so collect their raw
-    // movement and consume the whole batch once per game update.
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
       if (this.input.mouse?.locked) {
         this.pendingInput.x += pointer.movementX;
@@ -106,6 +95,26 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.input.keyboard?.on("keydown-ESC", () => this.input.mouse?.releasePointerLock());
+
+    this.multiplayer = new MultiplayerClient({
+      onState: (state, sessionId) => this.syncState(state, sessionId),
+      onConnected: () => this.hint.setText("Connected - click to catch the cursor"),
+      onDisconnected: () => {
+        this.clearRemotePlayers();
+        if (this.scene.isActive()) this.hint.setText("Disconnected from server");
+      },
+      onError: (error) => {
+        console.error("Could not connect to the game server", error);
+        if (this.scene.isActive()) this.hint.setText("Could not connect to server");
+      },
+    });
+    void this.multiplayer.connect();
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      void this.multiplayer?.disconnect();
+      this.multiplayer = undefined;
+      this.clearRemotePlayers();
+    });
   }
 
   update(_time: number, deltaMs: number) {
@@ -132,7 +141,6 @@ export class GameScene extends Phaser.Scene {
       this.velocity.scale(this.maxSpeed / speed);
     }
 
-    // Integrate exponential drag exactly instead of approximating it per frame.
     const decay = Math.exp(-this.movementResponse * dt);
     const travelScale = (1 - decay) / this.movementResponse;
     const dx = this.velocity.x * travelScale;
@@ -141,9 +149,83 @@ export class GameScene extends Phaser.Scene {
 
     this.moveAndCollide(dx, dy);
 
-    // Gameplay checks happen after movement, so plates react on the same frame.
-    this.updateGameplay();
-    this.emitTrail();
+    this.updateRemotePlayers(dt);
+    this.emitTrail(this.cursor.x, this.cursor.y, this.localTrailAnchor, this.localColor);
+    this.multiplayer?.publishPosition(_time, this.cursor.x, this.cursor.y);
+    this.updateColorStation();
+  }
+
+  private syncState(state: RoomState, localSessionId: string) {
+    const activePlayers = new Set<string>();
+
+    state.players.forEach((player, sessionId) => {
+      const color = this.parseColor(player.color);
+      if (sessionId === localSessionId) {
+        this.localColor = color;
+        this.cursor.setFillStyle(color);
+        return;
+      }
+      activePlayers.add(sessionId);
+
+      let remote = this.remotePlayers.get(sessionId);
+      if (!remote) {
+        const cursor = this.add.circle(player.x, player.y, this.radius, color);
+        cursor.setStrokeStyle(3, 0xffffff).setDepth(9);
+        remote = {
+          cursor,
+          target: new Phaser.Math.Vector2(player.x, player.y),
+          trailAnchor: new Phaser.Math.Vector2(player.x, player.y),
+          color,
+        };
+        this.remotePlayers.set(sessionId, remote);
+      }
+      remote.target.set(player.x, player.y);
+      remote.color = color;
+      remote.cursor.setFillStyle(color);
+    });
+
+    for (const [sessionId, remote] of this.remotePlayers) {
+      if (!activePlayers.has(sessionId)) {
+        remote.cursor.destroy();
+        this.remotePlayers.delete(sessionId);
+      }
+    }
+
+    state.doors.forEach((door, id) => {
+      const runtime = this.doors.find(({ def }) => def.id === id);
+      if (!runtime) return;
+      runtime.solid = !door.open;
+      runtime.rect.setAlpha(door.open ? 0.18 : 1);
+    });
+    state.plates.forEach((plate, id) => {
+      const runtime = this.plates.find(({ def }) => def.id === id);
+      if (!runtime) return;
+      runtime.active = plate.active;
+      runtime.rect.setFillStyle(plate.active ? 0x4ade80 : 0x9a6a2a);
+    });
+  }
+
+  private clearRemotePlayers() {
+    for (const remote of this.remotePlayers.values()) remote.cursor.destroy();
+    this.remotePlayers.clear();
+  }
+
+  private updateRemotePlayers(dt: number) {
+    const interpolation = 1 - Math.exp(-14 * dt);
+    for (const remote of this.remotePlayers.values()) {
+      const distance = Phaser.Math.Distance.Between(
+        remote.cursor.x,
+        remote.cursor.y,
+        remote.target.x,
+        remote.target.y,
+      );
+      if (distance > 400) remote.cursor.setPosition(remote.target.x, remote.target.y);
+      else {
+        remote.cursor.x = Phaser.Math.Linear(remote.cursor.x, remote.target.x, interpolation);
+        remote.cursor.y = Phaser.Math.Linear(remote.cursor.y, remote.target.y, interpolation);
+      }
+      this.emitTrail(remote.cursor.x, remote.cursor.y, remote.trailAnchor, remote.color);
+    }
   }
 
   /**
@@ -167,7 +249,6 @@ export class GameScene extends Phaser.Scene {
    */
   private resolveCollisions() {
     for (const o of OBSTACLES) this.resolveRect(o);
-    // Closed doors are solid too; open ones are passable.
     for (const d of this.doors) {
       if (d.solid) this.resolveRect(d.def);
     }
@@ -228,7 +309,6 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Create the visual game objects for plates and doors. */
   private buildGameplay() {
     for (const def of PLATES) {
       const rect = this.add
@@ -244,43 +324,24 @@ export class GameScene extends Phaser.Scene {
         .setOrigin(0, 0)
         .setStrokeStyle(2, 0xe88)
         .setDepth(2);
-      this.doors.push({ def, solid: true, openUntil: 0, rect });
-    }
-  }
-
-  /**
-   * Pressure-plate logic. A plate is "pressed" while at least one occupant (the
-   * cursor) stands on it. A pressed plate opens its doors immediately; once
-   * released, its doors stay open for `doorHoldMs` before closing again.
-   */
-  private updateGameplay() {
-    const now = this.time.now;
-
-    // 1. Which doors should currently be held open?
-    const holding = new Set<string>();
-    for (const p of this.plates) {
-      p.active = this.cursorOnPlate(p.def);
-      // Plate glows brighter while pressed.
-      p.rect.setFillStyle(p.active ? 0x4ade80 : 0x9a6a2a);
-      if (p.active) for (const id of p.def.doorIds) holding.add(id);
+      this.doors.push({ def, solid: true, rect });
     }
 
-    // 2. Apply open/close state to each door (with the linger timer).
-    for (const d of this.doors) {
-      if (holding.has(d.def.id)) d.openUntil = now + this.doorHoldMs;
-      const open = now < d.openUntil;
-      d.solid = !open;
-      d.rect.setAlpha(open ? 0.18 : 1);
+    for (const station of COLOR_STATIONS) {
+      this.add
+        .rectangle(station.x, station.y, station.width, station.height, this.parseColor(station.color), 0.7)
+        .setOrigin(0, 0)
+        .setStrokeStyle(3, 0xffffff, 0.65)
+        .setDepth(1);
+      this.add
+        .text(station.x + station.width / 2, station.y + station.height + 8, station.label, {
+          fontFamily: "monospace",
+          fontSize: "12px",
+          color: station.color,
+        })
+        .setOrigin(0.5, 0)
+        .setDepth(2);
     }
-  }
-
-  /** True if the cursor circle overlaps the plate rectangle. */
-  private cursorOnPlate(p: PressurePlate): boolean {
-    const cx = Phaser.Math.Clamp(this.cursor.x, p.x, p.x + p.width);
-    const cy = Phaser.Math.Clamp(this.cursor.y, p.y, p.y + p.height);
-    const dx = this.cursor.x - cx;
-    const dy = this.cursor.y - cy;
-    return dx * dx + dy * dy < this.radius * this.radius;
   }
 
   private updateHint(locked = this.input.mouse?.locked ?? false) {
@@ -309,24 +370,35 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  // A temporary function, will probably be removed from the final game
-  private emitTrail() {
-    let dx = this.cursor.x - this.trailAnchor.x;
-    let dy = this.cursor.y - this.trailAnchor.y;
+  private updateColorStation() {
+    const station = COLOR_STATIONS.find((candidate) => this.overlaps(candidate));
+    if (station?.color === this.activeColorStation) return;
+    this.activeColorStation = station?.color;
+    if (station) this.multiplayer?.setColor(station.color);
+  }
+
+  private overlaps(rect: ColorStation) {
+    const cx = Phaser.Math.Clamp(this.cursor.x, rect.x, rect.x + rect.width);
+    const cy = Phaser.Math.Clamp(this.cursor.y, rect.y, rect.y + rect.height);
+    return (this.cursor.x - cx) ** 2 + (this.cursor.y - cy) ** 2 < this.radius ** 2;
+  }
+
+  private parseColor(color: string) {
+    const parsed = Number.parseInt(color.replace(/^#/, ""), 16);
+    return Number.isFinite(parsed) ? parsed : 0xffffff;
+  }
+
+  private emitTrail(x: number, y: number, anchor: Phaser.Math.Vector2, color: number) {
+    let dx = x - anchor.x;
+    let dy = y - anchor.y;
     let distance = Math.hypot(dx, dy);
 
     while (distance >= this.trailSpacing) {
       const step = this.trailSpacing / distance;
-      this.trailAnchor.x += dx * step;
-      this.trailAnchor.y += dy * step;
+      anchor.x += dx * step;
+      anchor.y += dy * step;
 
-      const dot = this.add.circle(
-        this.trailAnchor.x,
-        this.trailAnchor.y,
-        6,
-        0x4ade80,
-        0.42,
-      );
+      const dot = this.add.circle(anchor.x, anchor.y, 6, color, 0.42);
       dot.setDepth(5);
       this.tweens.add({
         targets: dot,
@@ -337,8 +409,8 @@ export class GameScene extends Phaser.Scene {
         onComplete: () => dot.destroy(),
       });
 
-      dx = this.cursor.x - this.trailAnchor.x;
-      dy = this.cursor.y - this.trailAnchor.y;
+      dx = x - anchor.x;
+      dy = y - anchor.y;
       distance = Math.hypot(dx, dy);
     }
   }

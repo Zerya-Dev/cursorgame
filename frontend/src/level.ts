@@ -18,11 +18,17 @@ export interface Door extends Obstacle {
  * door(s) open. `doorIds` lists the doors this plate controls.
  */
 export interface PressurePlate {
+  id: string;
   x: number;
   y: number;
   width: number;
   height: number;
   doorIds: string[];
+}
+
+export interface ColorStation extends Obstacle {
+  color: string;
+  label: string;
 }
 
 const T = 40; // default wall thickness
@@ -81,7 +87,14 @@ export const DOORS: Door[] = [
  */
 export const PLATES: PressurePlate[] = [
   // Out in the open, opens the top-left room.
-  { x: 760, y: 900, width: 110, height: 110, doorIds: ["door-room"] },
+  { id: "plate-room", x: 760, y: 900, width: 110, height: 110, doorIds: ["door-room"] },
   // Near the central block, opens the bottom-right chamber.
-  { x: 1980, y: 1360, width: 110, height: 110, doorIds: ["door-chamber"] },
+  { id: "plate-chamber", x: 1980, y: 1360, width: 110, height: 110, doorIds: ["door-chamber"] },
+];
+
+export const COLOR_STATIONS: ColorStation[] = [
+  { color: "#4ade80", label: "GREEN", x: 1380, y: 1190, width: 70, height: 70 },
+  { color: "#60a5fa", label: "BLUE", x: 1470, y: 1190, width: 70, height: 70 },
+  { color: "#f472b6", label: "PINK", x: 1760, y: 1190, width: 70, height: 70 },
+  { color: "#facc15", label: "GOLD", x: 1850, y: 1190, width: 70, height: 70 },
 ];

@@ -1,4 +1,4 @@
-import { Client, Room } from "colyseus.js";
+import { Client, Room } from "@colyseus/sdk";
 import { COLYSEUS_URL, ROOM_NAME } from "../config";
 import type { RoomState } from "./state";
 
@@ -11,9 +11,6 @@ export function getClient(): Client {
   return client;
 }
 
-/**
- * Join the shared cursor room (or create it if it does not exist yet).
- */
 export async function joinRoom(): Promise<Room<RoomState>> {
   return getClient().joinOrCreate<RoomState>(ROOM_NAME);
 }

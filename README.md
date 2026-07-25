@@ -21,3 +21,15 @@ pnpm install
 ```shell
 pnpm dev
 ```
+
+## Docker
+
+Build and run the production frontend and multiplayer server together:
+
+```shell
+docker compose up --build
+```
+
+Open `http://localhost:2567`. Set `PORT` when deploying to a platform that
+requires a specific listening port. HTTPS deployments automatically use secure
+WebSockets (`wss://`) on the same hostname.
