@@ -1,32 +1,19 @@
 import { Room, Client, CloseCode } from "colyseus";
 import { MainRoomState } from "./schema/MainRoomState.js";
-import {Door, Player, PressurePlate} from "./schema/GeneralSchemas.js";
+import { Door, Player, PressurePlate } from "./schema/GeneralSchemas.js";
+import { World } from "../game/World.js";
+import { COLOR_STATIONS, DOOR_IDS, PLATES, PLAYER_RADIUS, circleOverlapsRect } from "@shared";
+import type { Rect } from "@shared";
 
-const PLAYER_RADIUS = 12;
-const DOOR_HOLD_MS = 1200;
-const COLOR_STATIONS = [
-  { color: "#4ade80", x: 1380, y: 1190, width: 70, height: 70 },
-  { color: "#60a5fa", x: 1470, y: 1190, width: 70, height: 70 },
-  { color: "#f472b6", x: 1760, y: 1190, width: 70, height: 70 },
-  { color: "#facc15", x: 1850, y: 1190, width: 70, height: 70 },
-];
-const PLATES = [
-  { id: "plate-room", x: 760, y: 900, width: 110, height: 110, doorIds: ["door-room"] },
-  { id: "plate-chamber", x: 1980, y: 1360, width: 110, height: 110, doorIds: ["door-chamber"] },
-];
-const DOOR_IDS = ["door-room", "door-chamber"];
-
-function overlapsRect(player: Player, rect: { x: number; y: number; width: number; height: number }) {
-  const closestX = Math.max(rect.x, Math.min(player.x, rect.x + rect.width));
-  const closestY = Math.max(rect.y, Math.min(player.y, rect.y + rect.height));
-  return (player.x - closestX) ** 2 + (player.y - closestY) ** 2 < PLAYER_RADIUS ** 2;
-}
+const DOOR_HOLD_MS = 1;
+const TICK_MS = 20;
 
 export class MainRoom extends Room {
   maxClients = 8;
   patchRate = 20;
   state = new MainRoomState();
   private doorOpenUntil = new Map<string, number>();
+  private world = new World(this.state);
 
   messages = {
     move: (client: Client, message: { x?: unknown; y?: unknown }) => {
@@ -35,7 +22,7 @@ export class MainRoom extends Room {
       if (!Number.isFinite(message.x) || !Number.isFinite(message.y)) return;
       player.x = Math.max(12, Math.min(3188, message.x));
       player.y = Math.max(12, Math.min(2388, message.y));
-      const station = COLOR_STATIONS.find((candidate) => overlapsRect(player, candidate));
+      const station = COLOR_STATIONS.find((candidate) => this.playerOverlaps(player, candidate));
       if (station) player.color = station.color;
       this.updateGameplay();
     },
@@ -43,7 +30,7 @@ export class MainRoom extends Room {
       const player = this.state.players.get(client.sessionId);
       if (!player || typeof message.color !== "string") return;
       const station = COLOR_STATIONS.find(({ color }) => color === message.color);
-      if (station && overlapsRect(player, station)) player.color = station.color;
+      if (station && this.playerOverlaps(player, station)) player.color = station.color;
     },
   }
 
@@ -58,7 +45,10 @@ export class MainRoom extends Room {
       plate.id = definition.id;
       this.state.plates.set(definition.id, plate);
     }
-    this.setSimulationInterval(() => this.updateGameplay(), 100);
+    this.setSimulationInterval(() => {
+      this.updateGameplay();
+      this.world.update(TICK_MS / 1000);
+    }, TICK_MS);
   }
 
   onJoin(client: Client) {
@@ -72,6 +62,7 @@ export class MainRoom extends Room {
 
   onLeave(client: Client, code: CloseCode) {
     this.state.players.delete(client.sessionId);
+    this.world.forgetPlayer(client.sessionId);
     this.updateGameplay();
     console.log(client.sessionId, "left!", code);
   }
@@ -80,14 +71,23 @@ export class MainRoom extends Room {
     console.log("room", this.roomId, "disposing...");
   }
 
+  private playerOverlaps(player: Player, rect: Rect) {
+    return circleOverlapsRect(player.x, player.y, PLAYER_RADIUS, rect);
+  }
+
+  private plateIsPressed(definition: Rect) {
+    for (const player of this.state.players.values()) {
+      if (this.playerOverlaps(player, definition)) return true;
+    }
+    return this.world.pressesRect(definition);
+  }
+
   private updateGameplay() {
     const now = Date.now();
     const heldDoors = new Set<string>();
 
     for (const definition of PLATES) {
-      const active = Array.from(this.state.players.values()).some((player) =>
-        overlapsRect(player, definition),
-      );
+      const active = this.plateIsPressed(definition);
       const plate = this.state.plates.get(definition.id);
       if (plate) plate.active = active;
       if (active) for (const doorId of definition.doorIds) heldDoors.add(doorId);
@@ -99,5 +99,4 @@ export class MainRoom extends Room {
       if (door) door.open = now < (this.doorOpenUntil.get(doorId) ?? 0);
     }
   }
-
 }
