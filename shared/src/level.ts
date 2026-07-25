@@ -69,11 +69,36 @@ const CORRIDOR_LEFT = (WORLD_WIDTH - CORRIDOR_WIDTH) / 2;
 const CORRIDOR_RIGHT = CORRIDOR_LEFT + CORRIDOR_WIDTH;
 
 // Vertical layout down the corridor, top to bottom: a landing behind door "2"
-// (the goal), the button/trash room, Level 1's balance-plate room, then the
-// funnel down into the lobby. Every one of these sits *above* LOBBY_TOP, so
-// the lobby itself (and everything in it) keeps its original coordinates.
-const LANDING_BEYOND_DOOR2 = 150; // clearance above door "2", where the cheese sits
-const DOOR2_Y = T + LANDING_BEYOND_DOOR2;
+// (the goal) beyond a lava maze -- Level 3 -- then the button/trash room
+// (Level 2), then Level 1's balance-plate room, then the funnel down into the
+// lobby. Every one of these sits *above* LOBBY_TOP, so the lobby itself (and
+// everything in it) keeps its original coordinates.
+
+// Level 3: a lava maze, laid out on a grid and carved with a randomized
+// depth-first search ("recursive backtracker") so there's exactly one path
+// through. Wider than the corridor, with narrow stubs re-joining the
+// corridor's width at both ends. Touch a wall and you're bounced back to the
+// maze's entrance instead of dying.
+const CHEESE_LANDING = 110; // clearance above the maze, where the cheese sits
+const MAZE_WIDTH = 900;
+const MAZE_LEFT = (WORLD_WIDTH - MAZE_WIDTH) / 2;
+const MAZE_RIGHT = MAZE_LEFT + MAZE_WIDTH;
+const MAZE_COLS = 5;
+const MAZE_ROWS = 6;
+const MAZE_CELL_WIDTH = MAZE_WIDTH / MAZE_COLS;
+const MAZE_CELL_HEIGHT = 45;
+const MAZE_WALL_THICKNESS = 24;
+const MAZE_SEED = 1337; // fixed so the frontend and backend independently carve the same maze
+
+const MAZE_TOP = T + CHEESE_LANDING;
+const MAZE_BOTTOM = MAZE_TOP + MAZE_ROWS * MAZE_CELL_HEIGHT;
+const MAZE_ENTRANCE = {
+  x: MAZE_LEFT + (Math.floor(MAZE_COLS / 2) + 0.5) * MAZE_CELL_WIDTH,
+  y: MAZE_BOTTOM - MAZE_CELL_HEIGHT / 2,
+};
+
+const MAZE_STUB_BELOW = 110; // re-joins the corridor's width down to door "2"
+const DOOR2_Y = MAZE_BOTTOM + MAZE_STUB_BELOW;
 const STUB_DOOR2_TO_ROOM = 110;
 
 const ROOM_HEIGHT = 500;
@@ -126,17 +151,29 @@ export const OBSTACLES: Obstacle[] = [
   { x: 0, y: 0, width: T, height: MAIN_LOBBY_BOTTOM },
   { x: WORLD_WIDTH - T, y: 0, width: T, height: MAIN_LOBBY_BOTTOM },
 
-  // Landing beyond door "2" -- the cheese's clearing.
-  { x: T, y: T, width: CORRIDOR_LEFT - T, height: DOOR2_Y - T },
-  { x: CORRIDOR_RIGHT, y: T, width: WORLD_WIDTH - T - CORRIDOR_RIGHT, height: DOOR2_Y - T },
+  // Cheese's landing above the maze.
+  { x: T, y: T, width: CORRIDOR_LEFT - T, height: MAZE_TOP - T },
+  { x: CORRIDOR_RIGHT, y: T, width: WORLD_WIDTH - T - CORRIDOR_RIGHT, height: MAZE_TOP - T },
 
-  // Corridor stub between door "2" and the button/trash room.
-  { x: T, y: DOOR2_Y + 30, width: CORRIDOR_LEFT - T, height: ROOM_TOP - (DOOR2_Y + 30) },
+  // The lava maze's own side walls, wider than the corridor.
+  { x: T, y: MAZE_TOP, width: MAZE_LEFT - T, height: MAZE_BOTTOM - MAZE_TOP },
+  {
+    x: MAZE_RIGHT,
+    y: MAZE_TOP,
+    width: WORLD_WIDTH - T - MAZE_RIGHT,
+    height: MAZE_BOTTOM - MAZE_TOP,
+  },
+
+  // Corridor from the maze down to the button/trash room, door "2" sitting in this gap.
+  // One continuous flanking wall per side (not split at the door) -- same shape as doors
+  // "0" and "1" below -- so there's no seam for the wall-stamping corner-joint overshoot
+  // to double up on right where the door leaves are.
+  { x: T, y: MAZE_BOTTOM, width: CORRIDOR_LEFT - T, height: ROOM_TOP - MAZE_BOTTOM },
   {
     x: CORRIDOR_RIGHT,
-    y: DOOR2_Y + 30,
+    y: MAZE_BOTTOM,
     width: WORLD_WIDTH - T - CORRIDOR_RIGHT,
-    height: ROOM_TOP - (DOOR2_Y + 30),
+    height: ROOM_TOP - MAZE_BOTTOM,
   },
 
   // Button/trash room is full-width, carved out by starting the next funnel
@@ -366,7 +403,88 @@ export const COLOR_STATIONS: ColorStation[] = [
   { color: "#8b5a3c", label: "BROWN", x: 330, y: 2310, width: 70, height: 70 },
 ];
 
-export const LAVA_ZONES: LavaZone[] = [];
+// Seeded PRNG (mulberry32) so maze generation is deterministic -- this module runs
+// independently in the frontend bundle and the backend process, and both need to land
+// on the identical maze without talking to each other.
+function mulberry32(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state |= 0;
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Randomized depth-first search (a "recursive backtracker"): carves a spanning tree over
+ * the grid, so there's exactly one path between any two cells. hWalls[r][c] is the wall
+ * between (r, c) and (r + 1, c); vWalls[r][c] is the wall between (r, c) and (r, c + 1).
+ */
+function carveMaze(cols: number, rows: number, seed: number) {
+  const rand = mulberry32(seed);
+  const visited: boolean[][] = Array.from({ length: rows }, () => Array(cols).fill(false));
+  const hWalls: boolean[][] = Array.from({ length: rows - 1 }, () => Array(cols).fill(true));
+  const vWalls: boolean[][] = Array.from({ length: rows }, () => Array(cols - 1).fill(true));
+
+  const stack: Array<[number, number]> = [[0, 0]];
+  visited[0][0] = true;
+  while (stack.length > 0) {
+    const [r, c] = stack[stack.length - 1];
+    const neighbors: Array<[number, number, "N" | "S" | "E" | "W"]> = [];
+    if (r > 0 && !visited[r - 1][c]) neighbors.push([r - 1, c, "N"]);
+    if (r < rows - 1 && !visited[r + 1][c]) neighbors.push([r + 1, c, "S"]);
+    if (c > 0 && !visited[r][c - 1]) neighbors.push([r, c - 1, "W"]);
+    if (c < cols - 1 && !visited[r][c + 1]) neighbors.push([r, c + 1, "E"]);
+
+    if (neighbors.length === 0) {
+      stack.pop();
+      continue;
+    }
+    const [nr, nc, dir] = neighbors[Math.floor(rand() * neighbors.length)];
+    if (dir === "N") hWalls[r - 1][c] = false;
+    else if (dir === "S") hWalls[r][c] = false;
+    else if (dir === "W") vWalls[r][c - 1] = false;
+    else vWalls[r][c] = false;
+    visited[nr][nc] = true;
+    stack.push([nr, nc]);
+  }
+  return { hWalls, vWalls };
+}
+
+function buildMazeLavaZones(): LavaZone[] {
+  const { hWalls, vWalls } = carveMaze(MAZE_COLS, MAZE_ROWS, MAZE_SEED);
+  const zones: LavaZone[] = [];
+
+  for (let r = 0; r < MAZE_ROWS - 1; r++) {
+    for (let c = 0; c < MAZE_COLS; c++) {
+      if (!hWalls[r][c]) continue;
+      zones.push({
+        x: MAZE_LEFT + c * MAZE_CELL_WIDTH,
+        y: MAZE_TOP + (r + 1) * MAZE_CELL_HEIGHT - MAZE_WALL_THICKNESS / 2,
+        width: MAZE_CELL_WIDTH,
+        height: MAZE_WALL_THICKNESS,
+        teleportTo: MAZE_ENTRANCE,
+      });
+    }
+  }
+  for (let r = 0; r < MAZE_ROWS; r++) {
+    for (let c = 0; c < MAZE_COLS - 1; c++) {
+      if (!vWalls[r][c]) continue;
+      zones.push({
+        x: MAZE_LEFT + (c + 1) * MAZE_CELL_WIDTH - MAZE_WALL_THICKNESS / 2,
+        y: MAZE_TOP + r * MAZE_CELL_HEIGHT,
+        width: MAZE_WALL_THICKNESS,
+        height: MAZE_CELL_HEIGHT,
+        teleportTo: MAZE_ENTRANCE,
+      });
+    }
+  }
+  return zones;
+}
+
+export const LAVA_ZONES: LavaZone[] = buildMazeLavaZones();
 
 // A tiny football pitch in the lower colour room. The movable barrel is the ball.
 export const FOOTBALL_PITCH: Rect = { x: 90, y: 2820, width: 360, height: 840 };
@@ -510,10 +628,10 @@ export const DECORATIONS: DecorDef[] = [
 
 /**
  * The goal. Kept as named level data rather than a special case in the scene,
- * because more stages are planned after this one. Sits in the landing beyond
- * door "2", which the trash plate opens.
+ * because more stages are planned after this one. Sits in the landing above
+ * the maze, reached after clearing it and door "2" (which the trash plate opens).
  */
-export const CHEESE = { x: WORLD_WIDTH / 2, y: T + 110, size: 96 };
+export const CHEESE = { x: WORLD_WIDTH / 2, y: T + CHEESE_LANDING / 2, size: 96 };
 
 export interface ButtonDef extends Rect {}
 
