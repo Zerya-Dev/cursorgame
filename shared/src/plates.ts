@@ -71,9 +71,7 @@ export function plateCountLabel(rule?: PlateCountRule): string {
 }
 
 export interface PlateRequirementLabel {
-  /** short human-readable requirement, e.g. "1+ x ball", "2 x any", "all x player" */
   text: string;
-  /** hex color to show as a swatch, when the filter is color-restricted */
   swatch?: string;
 }
 

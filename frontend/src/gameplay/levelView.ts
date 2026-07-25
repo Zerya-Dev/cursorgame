@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { WORLD_HEIGHT, WORLD_WIDTH } from "../config";
+import { WORLD_HEIGHT, WORLD_WIDTH } from "@shared";
 import { BUTTON, COLOR_STATIONS, DOORS, OBSTACLES, PLATES, plateCountLabel } from "@shared";
 import type { Door, PressurePlate } from "@shared";
 import { parseColor } from "./color";
@@ -143,11 +143,16 @@ export function buildInteractables(scene: Phaser.Scene) {
       .setDepth(1);
 
     const icon = scene.add
-      .text(def.x + def.width / 2, def.y + def.height / 2 - 6, plateIcon(def.filter?.entityKind), {
-        fontFamily: "monospace",
-        fontSize: "34px",
-        color: def.filter?.color ?? PLATE_IDLE_TEXT,
-      })
+      .text(
+        def.x + def.width / 2,
+        def.y + def.height / 2 - 6,
+        def.label ?? plateIcon(def.filter?.entityKind),
+        {
+          fontFamily: "monospace",
+          fontSize: def.label ? "20px" : "34px",
+          color: def.filter?.color ?? PLATE_IDLE_TEXT,
+        },
+      )
       .setOrigin(0.5)
       .setDepth(2);
 

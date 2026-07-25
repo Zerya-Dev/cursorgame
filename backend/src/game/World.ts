@@ -54,6 +54,17 @@ export class World {
     return occupants;
   }
 
+  collectEntities(rect: Rect, kind: string) {
+    this.entities = this.entities.filter((entity) => {
+      const schema = entity.schema;
+      if (schema.kind !== kind || !circleOverlapsRect(schema.x, schema.y, schema.radius, rect)) {
+        return true;
+      }
+      this.state.entities.delete(schema.id);
+      return false;
+    });
+  }
+
   forgetPlayer(sessionId: string) {
     this.prevPlayerPos.delete(sessionId);
   }

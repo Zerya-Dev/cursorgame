@@ -13,6 +13,8 @@ import {
   PLATES,
   PLAYER_RADIUS,
   SPAWN_POINT,
+  TRASH_DOOR_ID,
+  TRASH_PLATE_ID,
   WORLD_HEIGHT,
   WORLD_WIDTH,
   circleOverlapsRect,
@@ -22,6 +24,10 @@ import {
 import type { PlateOccupant, PressurePlate as PlateDef, Rect } from "@shared";
 
 const PERMANENT_DOORS = new Set(DOORS.filter((door) => door.permanent).map((door) => door.id));
+
+const trashPlateDef = PLATES.find((plate) => plate.id === TRASH_PLATE_ID);
+if (!trashPlateDef) throw new Error(`Missing plate definition: ${TRASH_PLATE_ID}`);
+const TRASH_PLATE: PlateDef = trashPlateDef;
 
 const DOOR_HOLD_MS = 600;
 const TICK_MS = 20;
@@ -205,12 +211,16 @@ export class MainRoom extends Room {
       if (plate) plate.active = active;
     }
 
+    this.world.collectEntities(TRASH_PLATE, "ball");
+
     for (const doorId of DOOR_IDS) {
       const gatingPlates = PLATES.filter((definition: PlateDef) =>
         definition.doorIds.includes(doorId),
       );
       const satisfied =
-        gatingPlates.length > 0 && gatingPlates.every((plate) => activePlates.get(plate.id));
+        doorId === TRASH_DOOR_ID
+          ? this.state.button.stage === 2 && this.prankBallsRemaining() === 0
+          : gatingPlates.length > 0 && gatingPlates.every((plate) => activePlates.get(plate.id));
       if (satisfied) {
         this.doorOpenUntil.set(doorId, now + DOOR_HOLD_MS);
         if (PERMANENT_DOORS.has(doorId)) this.unlockedDoors.add(doorId);
@@ -220,5 +230,13 @@ export class MainRoom extends Room {
         door.open = this.unlockedDoors.has(doorId) || now < (this.doorOpenUntil.get(doorId) ?? 0);
       }
     }
+  }
+
+  private prankBallsRemaining() {
+    let count = 0;
+    for (const entity of this.state.entities.values()) {
+      if (entity.id.startsWith("prank-ball-")) count++;
+    }
+    return count;
   }
 }

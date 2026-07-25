@@ -3,7 +3,7 @@ import type { Rect } from "./physics.js";
 export const WORLD_WIDTH = 1600;
 export const LOBBY_HEIGHT = 1000;
 export const CORRIDOR_WIDTH = 320;
-export const CORRIDOR_HEIGHT = 2000;
+export const CORRIDOR_HEIGHT = 1660;
 export const WORLD_HEIGHT = LOBBY_HEIGHT + CORRIDOR_HEIGHT;
 
 export const PLAYER_RADIUS = 12;
@@ -33,10 +33,9 @@ export type PlateCountRule =
 export interface PressurePlate extends Rect {
   id: string;
   doorIds: string[];
-  /** what counts as an occupant; omitted = any presser */
   filter?: PlateFilter;
-  /** requirement on the number of matching occupants; omitted = at least 1 */
   count?: PlateCountRule;
+  label?: string;
 }
 
 export interface ColorStation extends Rect {
@@ -61,12 +60,21 @@ const LOBBY_TOP = CORRIDOR_HEIGHT;
 const CORRIDOR_LEFT = (WORLD_WIDTH - CORRIDOR_WIDTH) / 2;
 const CORRIDOR_RIGHT = CORRIDOR_LEFT + CORRIDOR_WIDTH;
 
-const ROOM_HEIGHT = 500;
-const ROOM_BOTTOM = T + ROOM_HEIGHT;
+// Vertical layout, top (door "2"/world edge) to bottom (lobby). Gaps between
+// rooms are kept short on purpose so the levels sit close together.
+const LANDING_BEYOND_DOOR2 = 150; // small clearing past door "2", nothing there yet
+const DOOR2_Y = T + LANDING_BEYOND_DOOR2;
+const STUB_DOOR2_TO_ROOM = 110;
 
-const LEVEL1_DOOR_Y = 900;
+const ROOM_HEIGHT = 500;
+const ROOM_TOP = DOOR2_Y + 30 + STUB_DOOR2_TO_ROOM;
+const ROOM_BOTTOM = ROOM_TOP + ROOM_HEIGHT;
+
+const STUB_ROOM_TO_LEVEL1 = 150;
+const LEVEL1_DOOR_Y = ROOM_BOTTOM + STUB_ROOM_TO_LEVEL1;
 const LEVEL1_TOP = LEVEL1_DOOR_Y + 30;
-const LEVEL1_BOTTOM = 1630;
+const LEVEL1_HEIGHT = 500;
+const LEVEL1_BOTTOM = LEVEL1_TOP + LEVEL1_HEIGHT;
 const LEVEL1_LEFT = 300;
 const LEVEL1_RIGHT = 1300;
 
@@ -96,6 +104,20 @@ export const OBSTACLES: Obstacle[] = [
   { x: 0, y: 0, width: T, height: WORLD_HEIGHT },
   { x: WORLD_WIDTH - T, y: 0, width: T, height: WORLD_HEIGHT },
 
+  // Landing beyond door "2" (dead-ends at the top wall for now).
+  { x: T, y: T, width: CORRIDOR_LEFT - T, height: DOOR2_Y - T },
+  { x: CORRIDOR_RIGHT, y: T, width: WORLD_WIDTH - T - CORRIDOR_RIGHT, height: DOOR2_Y - T },
+
+  // Corridor stub between door "2" and the button room.
+  { x: T, y: DOOR2_Y + 30, width: CORRIDOR_LEFT - T, height: ROOM_TOP - (DOOR2_Y + 30) },
+  {
+    x: CORRIDOR_RIGHT,
+    y: DOOR2_Y + 30,
+    width: WORLD_WIDTH - T - CORRIDOR_RIGHT,
+    height: ROOM_TOP - (DOOR2_Y + 30),
+  },
+
+  // Corridor stub between the button room and Level 1's door.
   { x: T, y: ROOM_BOTTOM, width: CORRIDOR_LEFT - T, height: LEVEL1_TOP - ROOM_BOTTOM },
   {
     x: CORRIDOR_RIGHT,
@@ -120,12 +142,12 @@ export const OBSTACLES: Obstacle[] = [
     height: LOBBY_TOP - LEVEL1_BOTTOM,
   },
 
-  { x: 40, y: 2000, width: 200, height: LOBBY_TOP - T },
-  { x: 1400, y: 2000, width: 200, height: LOBBY_TOP - T },
+  { x: 40, y: LOBBY_TOP, width: 200, height: LOBBY_TOP - T },
+  { x: 1400, y: LOBBY_TOP, width: 200, height: LOBBY_TOP - T },
 ];
 
 export const DOORS: Door[] = [
-  { x: 680, y: 1970, width: 320, height: 30, id: "0" },
+  { x: 680, y: LOBBY_TOP - 30, width: 320, height: 30, id: "0" },
   {
     x: CORRIDOR_LEFT,
     y: LEVEL1_DOOR_Y,
@@ -134,13 +156,21 @@ export const DOORS: Door[] = [
     id: "1",
     permanent: true,
   },
+  {
+    x: CORRIDOR_LEFT,
+    y: DOOR2_Y,
+    width: CORRIDOR_WIDTH,
+    height: 30,
+    id: "2",
+    permanent: true,
+  },
 ];
 
 export const PLATES: PressurePlate[] = [
   {
     id: "plate-lobby-left-1",
     x: 350,
-    y: 2100,
+    y: 1760,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -150,7 +180,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-lobby-left-2",
     x: 350,
-    y: 2280,
+    y: 1940,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -160,7 +190,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-lobby-left-3",
     x: 350,
-    y: 2460,
+    y: 2120,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -170,7 +200,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-lobby-left-4",
     x: 350,
-    y: 2640,
+    y: 2300,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -180,7 +210,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-lobby-left-5",
     x: 350,
-    y: 2820,
+    y: 2480,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -190,7 +220,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-lobby-right-1",
     x: 1150,
-    y: 2100,
+    y: 1760,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -200,7 +230,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-lobby-right-2",
     x: 1150,
-    y: 2280,
+    y: 1940,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -210,7 +240,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-lobby-right-3",
     x: 1150,
-    y: 2460,
+    y: 2120,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -220,7 +250,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-lobby-right-4",
     x: 1150,
-    y: 2640,
+    y: 2300,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -230,7 +260,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-lobby-right-5",
     x: 1150,
-    y: 2820,
+    y: 2480,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -241,7 +271,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-level1-left",
     x: 380,
-    y: LEVEL1_TOP + 200,
+    y: LEVEL1_TOP + 100,
     width: 300,
     height: 300,
     doorIds: ["1"],
@@ -251,14 +281,28 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-level1-right",
     x: 920,
-    y: LEVEL1_TOP + 200,
+    y: LEVEL1_TOP + 100,
     width: 300,
     height: 300,
     doorIds: ["1"],
     filter: { entityKind: "player" },
     count: { mode: "balance", withPlateId: "plate-level1-left" },
   },
+
+  {
+    id: "plate-trash",
+    x: 120,
+    y: ROOM_TOP + 100,
+    width: 280,
+    height: 300,
+    doorIds: [],
+    filter: { entityKind: "ball" },
+    label: "trash",
+  },
 ];
+
+export const TRASH_PLATE_ID = "plate-trash";
+export const TRASH_DOOR_ID = "2";
 
 export const DOOR_RECTS: Record<string, Rect> = Object.fromEntries(
   DOORS.map((door) => [door.id, door]),
@@ -266,35 +310,41 @@ export const DOOR_RECTS: Record<string, Rect> = Object.fromEntries(
 export const DOOR_IDS = DOORS.map((door) => door.id);
 
 export const COLOR_STATIONS: ColorStation[] = [
-  { color: "#ff0000", label: "RED", x: 630, y: 2300, width: 70, height: 70 },
-  { color: "#00f84f", label: "GREEN", x: 720, y: 2300, width: 70, height: 70 },
-  { color: "#0014ed", label: "BLUE", x: 810, y: 2300, width: 70, height: 70 },
-  { color: "#000000", label: "BLACK", x: 900, y: 2300, width: 70, height: 70 },
+  { color: "#ff0000", label: "RED", x: 630, y: 1960, width: 70, height: 70 },
+  { color: "#00f84f", label: "GREEN", x: 720, y: 1960, width: 70, height: 70 },
+  { color: "#0014ed", label: "BLUE", x: 810, y: 1960, width: 70, height: 70 },
+  { color: "#000000", label: "BLACK", x: 900, y: 1960, width: 70, height: 70 },
 ];
 
 export const LAVA_ZONES: LavaZone[] = [];
 
 export const WORLD_TEXTS: WorldText[] = [
-  { x: 552, y: 2100, text: "Hellllo there!", size: 45 },
-  { x: 806, y: 2178, text: "Pick a color!", size: 30 },
+  { x: 552, y: 1760, text: "Hellllo there!", size: 45 },
+  { x: 806, y: 1838, text: "Pick a color!", size: 30 },
   { x: 548, y: LEVEL1_TOP + 40, text: "Split evenly - half left, half right", size: 28 },
 ];
 
 export interface ButtonDef extends Rect {}
 
-// centered in the room at the top of the corridor, past door "0" and the plate puzzle
+// centered in the room at the top of the corridor, past door "1" and the plate puzzle
 export const BUTTON: ButtonDef = {
   x: WORLD_WIDTH / 2 - 110,
-  y: T + ROOM_HEIGHT / 2 - 70,
+  y: ROOM_TOP + ROOM_HEIGHT / 2 - 70,
   width: 220,
   height: 140,
 };
 
-// spec calls for 1000 combined clicks; using 20 for now per request while testing
 export const BUTTON_CLICK_TARGET = 20;
-
-export const BALL_SPAWN_COLORS = ["#ef4444", "#f97316", "#facc15", "#4ade80", "#60a5fa", "#a78bfa"];
-
+export const BALL_SPAWN_COLORS = [
+  "#4ade80",
+  "#60a5fa",
+  "#a78bfa",
+  "#e93701",
+  "#47112b",
+  "#92b082",
+  "#046b7d",
+  "#b0b53c",
+];
 export const BALL_SPAWN_COUNT = 30;
 
 export const ENTITY_KINDS: Record<string, EntityKindConfig> = {
@@ -306,18 +356,8 @@ export const ENTITY_KINDS: Record<string, EntityKindConfig> = {
     colorable: true,
     pressesPlates: true,
   },
-  // boulder: {
-  //   friction: 6,
-  //   restitution: 0.15,
-  //   maxSpeed: 400,
-  //   pushTransfer: 0.5,
-  //   colorable: false,
-  //   pressesPlates: true,
-  // },
 };
 
 export const ENTITIES: EntityDef[] = [
-  { kind: "ball", id: "ball-main", x: 639, y: 2200, radius: 20, color: "#e0e0e0" },
-  // { kind: "ball", id: "ball-small", x: 500, y: 2700, radius: 14, color: "#f97316" },
-  // { kind: "boulder", id: "boulder-1", x: 1100, y: 2700, radius: 30, color: "#8b8b9e" },
+  { kind: "ball", id: "ball-main", x: 639, y: 1860, radius: 20, color: "#e0e0e0" },
 ];
