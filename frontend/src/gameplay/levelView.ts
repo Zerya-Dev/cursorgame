@@ -10,10 +10,10 @@ const PLATE_IDLE_TEXT = "#9a6a2a";
 const PLATE_ACTIVE_TEXT = "#4ade80";
 
 function plateIcon(entityKind?: string): string {
-  if (entityKind === "player") return "▲"; // people stand here
-  if (entityKind === "ball") return "●"; // balls only
-  if (entityKind === "boulder") return "■"; // boulders only
-  return "✱"; // anything counts
+  if (entityKind === "player") return "ppl";
+  if (entityKind === "ball") return "ballz here";
+  if (entityKind === "boulder") return "boulders only";
+  return "everyone!";
 }
 
 export interface DoorRuntime {
