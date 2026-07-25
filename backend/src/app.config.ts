@@ -7,14 +7,12 @@ import {
     createEndpoint,
 } from "colyseus";
 
-/**
- * Import your Room files
- */
 import { MainRoom } from "./rooms/MainRoom.js";
 import basicAuth from "express-basic-auth";
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { LobbyRoom } from "./rooms/LobbyRoom.js";
 
 const basicAuthMiddleware = basicAuth({
     users: { "admin": "admin" },
@@ -26,6 +24,7 @@ const server = defineServer({
      * Define your room handlers:
      */
     rooms: {
+        lobby: defineRoom(LobbyRoom),
         main_room: defineRoom(MainRoom)
     },
 
