@@ -213,7 +213,7 @@ export class GameScene extends Phaser.Scene {
     this.activeColorStation = station?.color;
 
     if (station) {
-      this.localColor = this.parseColor(station.color);
+      this.localColor = parseColor(station.color);
 
       // APPLY THE COLOR TO THE SVG HERE:
       this.cursor.setTint(this.localColor);
