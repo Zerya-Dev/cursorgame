@@ -45,6 +45,9 @@ const server = defineServer({
       app.use("/", playground());
     } else {
       app.use(express.static(frontendDist));
+      app.get("/favicon.ico", (_req, res) => {
+        res.sendFile(path.join(frontendDist, "assets", "favicon.ico"));
+      });
       app.get("/", (_req, res) => {
         res.sendFile(path.join(frontendDist, "index.html"));
       });
