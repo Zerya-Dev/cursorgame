@@ -51,6 +51,8 @@ const server = defineServer({
             app.use(express.static(frontendDist));
         }
 
+        app.use("/assets", express.static(path.join(frontendDist, "assets")));
+
         app.get("/hi", (req, res) => {
             res.send("It's time to kick ass and chew bubblegum!");
         });
