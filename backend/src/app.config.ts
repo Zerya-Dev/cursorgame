@@ -35,10 +35,6 @@ const server = defineServer({
     // Resolved relative to the bundled output at backend/build/index.js.
     const frontendDist = fileURLToPath(new URL("../../frontend/dist", import.meta.url));
 
-    app.get("/hi", (req, res) => {
-      res.send("It's time to kick ass and chew bubblegum!");
-    });
-
     app.use("/monitor", basicAuthMiddleware, monitor());
 
     if (process.env.NODE_ENV !== "production") {
