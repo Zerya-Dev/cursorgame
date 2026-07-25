@@ -10,6 +10,8 @@
   "scripts": {
     "dev": "pnpm --parallel --filter cursorgame-server --filter cursorgame-frontend dev",
     "docker:build": "docker build -t cursorgame .",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "prepare": "git config core.hooksPath .githooks || true",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
