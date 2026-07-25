@@ -1,12 +1,20 @@
 import Phaser from "phaser";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "@shared";
-import { COLOR_STATIONS, LAVA_ZONES, OBSTACLES, PLAYER_RADIUS } from "@shared";
+import {
+  COLOR_STATIONS,
+  LAVA_ZONES,
+  OBSTACLES,
+  PLAYER_RADIUS,
+  SPAWN_POINT,
+  WORLD_TEXTS,
+} from "@shared";
 import type { Rect } from "@shared";
 import { moveAndCollide } from "../gameplay/collision";
 import { findColorStation, parseColor } from "../gameplay/color";
 import { buildInteractables, drawLevel } from "../gameplay/levelView";
 import type { DoorRuntime, PlateRuntime } from "../gameplay/levelView";
 import { buildLavaZones, findLavaZone } from "../gameplay/lava";
+import { buildWorldTexts } from "../gameplay/worldText";
 import { RenderPlayers } from "../gameplay/renderPlayers";
 import { SprayLayer } from "../gameplay/spray";
 import { createEntityView } from "../entities/registry";
@@ -67,12 +75,13 @@ export class GameScene extends Phaser.Scene {
     this.doors = doors;
     this.plates = plates;
     buildLavaZones(this, LAVA_ZONES);
+    buildWorldTexts(this, WORLD_TEXTS);
     this.renderPlayers = new RenderPlayers(this);
 
     this.touchNavigation = window.matchMedia("(pointer: coarse)").matches;
 
-    const startX = WORLD_WIDTH / 2;
-    const startY = WORLD_HEIGHT / 2;
+    const startX = SPAWN_POINT.x;
+    const startY = SPAWN_POINT.y;
     this.cursorOutline = this.add.image(startX, startY, "cursorIcon");
     this.cursorOutline.setTint(0xffffff); // White outline
     this.cursorOutline.setScale(1.2); // Slightly larger than original
