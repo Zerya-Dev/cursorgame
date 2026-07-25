@@ -1,0 +1,6 @@
+{
+  "*": [
+    "pnpm lint:fix",
+    "pnpm fmt"
+  ]
+}
