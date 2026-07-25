@@ -19,9 +19,6 @@ export class LobbyRoom extends Room {
     }
 
     onCreate (options: any) {
-        /**
-         * Called when a new room is created.
-         */
     }
 
     onJoin (client: Client, options: any) {
@@ -34,17 +31,11 @@ export class LobbyRoom extends Room {
     }
 
     onLeave (client: Client, code: CloseCode) {
-        /**
-         * Called when a client leaves the room.
-         */
         this.state.players.delete(client.sessionId);
         console.log(client.sessionId, "left!", code);
     }
 
     onDispose() {
-        /**
-         * Called when the room is disposed.
-         */
         console.log("room", this.roomId, "disposing...");
     }
 

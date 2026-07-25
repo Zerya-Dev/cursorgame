@@ -1,20 +1,18 @@
 {
+  "extends": "../tsconfig.json",
   "compilerOptions": {
     "outDir": "build",
-    "target": "ESNext",
+    "rootDir": "..",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "strict": true,
     "allowJs": true,
     "strictNullChecks": false,
-    "esModuleInterop": true,
     "experimentalDecorators": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
     "useDefineForClassFields": false
   },
   "include": [
     "src",
-    "test"
+    "test",
+    "../shared/src"
   ]
 }

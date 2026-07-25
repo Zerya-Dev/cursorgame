@@ -1,5 +1,5 @@
-import Phaser from "phaser";
-import type { ColorStation } from "../level";
+import { circleOverlapsRect } from "@shared";
+import type { ColorStation } from "@shared";
 
 export function parseColor(color: string): number {
   const parsed = Number.parseInt(color.replace(/^#/, ""), 16);
@@ -11,9 +11,5 @@ export function findColorStation(
   radius: number,
   stations: ColorStation[],
 ): ColorStation | undefined {
-  return stations.find((rect) => {
-    const cx = Phaser.Math.Clamp(cursor.x, rect.x, rect.x + rect.width);
-    const cy = Phaser.Math.Clamp(cursor.y, rect.y, rect.y + rect.height);
-    return (cursor.x - cx) ** 2 + (cursor.y - cy) ** 2 < radius ** 2;
-  });
+  return stations.find((station) => circleOverlapsRect(cursor.x, cursor.y, radius, station));
 }

@@ -1,26 +1,22 @@
 import Phaser from "phaser";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../config";
-import { COLOR_STATIONS, OBSTACLES } from "../level";
-import { findColorStation, parseColor } from "../gameplay/color";
+import { COLOR_STATIONS, OBSTACLES, PLAYER_RADIUS } from "@shared";
+import type { Rect } from "@shared";
 import { moveAndCollide } from "../gameplay/collision";
+import { findColorStation, parseColor } from "../gameplay/color";
 import { buildInteractables, drawLevel } from "../gameplay/levelView";
 import type { DoorRuntime, PlateRuntime } from "../gameplay/levelView";
 import { RenderPlayers } from "../gameplay/renderPlayers";
+import { createEntityView } from "../entities/registry";
+import type { EntityView, PredictionContext } from "../entities/registry";
 import { MultiplayerClient } from "../network/MultiplayerClient";
 import type { RoomState } from "../network/state";
 
-/**
- * Standalone scene: you control an in-game cursor across a world that is much
- * larger than the viewport. Click once to "catch" the cursor —EM DASH OR EN DASH this locks the
- * OS pointer, so mouse movement drives the in-game cursor freely and the camera
- * follows it around the world. Press Esc to release the pointer. ??????????????????????????????????????????????????????????????????????????????
- */
 export class GameScene extends Phaser.Scene {
   private cursor!: Phaser.GameObjects.Image;
   private cursorOutline!: Phaser.GameObjects.Image;
   private velocity = new Phaser.Math.Vector2();
   private pendingInput = new Phaser.Math.Vector2();
-  private localTrailAnchor = new Phaser.Math.Vector2();
   private localColor = 0x4ade80;
   private pointerLocked = false;
   private hint!: Phaser.GameObjects.Text;
@@ -29,11 +25,12 @@ export class GameScene extends Phaser.Scene {
   private plates: PlateRuntime[] = [];
   private multiplayer?: MultiplayerClient;
   private renderPlayers!: RenderPlayers;
+  private entities = new Map<string, EntityView>();
   private activeColorStation?: string;
   private touchNavigation = false;
   private touchPointerId?: number;
   private previousTouch = new Phaser.Math.Vector2();
-  private readonly radius = 12;
+  private readonly radius = PLAYER_RADIUS;
   private readonly sensitivity = 0.82;
   private readonly movementResponse = 14;
   private readonly maxSpeed = 1400;
@@ -43,7 +40,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    // Force Phaser to render the SVG at a specific size (e.g., 48x48 for a sharp cursor)
     this.load.svg('cursorIcon', 'assets/cursor-alt-svgrepo-com.svg', {
       width: 48,
       height: 48
@@ -71,7 +67,6 @@ export class GameScene extends Phaser.Scene {
     this.cursor = this.add.image(startX, startY, 'cursorIcon');
     this.cursor.setTint(this.localColor);
     this.cursor.setDepth(10);
-    this.localTrailAnchor.set(startX, startY);
 
     this.cameras.main.startFollow(this.cursor, true, 0.35, 0.35);
     this.cameras.main.setDeadzone(100, 80);
@@ -131,6 +126,7 @@ export class GameScene extends Phaser.Scene {
       onConnected: () => this.hint.setText("Connected - click to catch the cursor"),
       onDisconnected: () => {
         this.renderPlayers.clear();
+        this.clearEntities();
         if (this.scene.isActive()) this.hint.setText("Disconnected from server");
       },
       onError: (error) => {
@@ -144,6 +140,7 @@ export class GameScene extends Phaser.Scene {
       void this.multiplayer?.disconnect();
       this.multiplayer = undefined;
       this.renderPlayers.clear();
+      this.clearEntities();
     });
   }
 
@@ -187,10 +184,23 @@ export class GameScene extends Phaser.Scene {
     const dy = this.velocity.y * travelScale;
     this.velocity.scale(decay);
 
-    const solidObstacles = [...OBSTACLES, ...this.doors.filter((d) => d.solid).map((d) => d.def)];
-    moveAndCollide(this.cursor, this.velocity, this.radius, dx, dy, solidObstacles);
+    const solids = this.collectSolids();
+    const cursorFromX = this.cursor.x;
+    const cursorFromY = this.cursor.y;
+    moveAndCollide(this.cursor, this.velocity, this.radius, dx, dy, solids);
 
     this.renderPlayers.update(dt);
+    this.updateEntities(dt, {
+      sweep: {
+        fromX: cursorFromX,
+        fromY: cursorFromY,
+        toX: this.cursor.x,
+        toY: this.cursor.y,
+        vx: (this.cursor.x - cursorFromX) / dt,
+        vy: (this.cursor.y - cursorFromY) / dt,
+      },
+      solids,
+    });
     this.multiplayer?.publishPosition(time, this.cursor.x, this.cursor.y);
     this.updateColorStation();
     this.cursorOutline.setPosition(this.cursor.x, this.cursor.y);
@@ -211,6 +221,40 @@ export class GameScene extends Phaser.Scene {
       runtime.active = plate.active;
       runtime.rect.setFillStyle(plate.active ? 0x4ade80 : 0x9a6a2a);
     });
+
+    const activeEntities = new Set<string>();
+    state.entities.forEach((entity, id) => {
+      activeEntities.add(id);
+      let view = this.entities.get(id);
+      if (!view) {
+        view = createEntityView(this, entity);
+        this.entities.set(id, view);
+      }
+      view.syncFromServer(entity);
+    });
+    for (const [id, view] of this.entities) {
+      if (!activeEntities.has(id)) {
+        view.destroy();
+        this.entities.delete(id);
+      }
+    }
+  }
+
+  private updateEntities(dt: number, ctx: PredictionContext) {
+    for (const view of this.entities.values()) view.update(dt, ctx);
+  }
+
+  private clearEntities() {
+    for (const view of this.entities.values()) view.destroy();
+    this.entities.clear();
+  }
+
+  private collectSolids(): Rect[] {
+    const solids: Rect[] = [...OBSTACLES];
+    for (const door of this.doors) {
+      if (door.solid) solids.push(door.def);
+    }
+    return solids;
   }
 
   private updateColorStation() {
@@ -221,10 +265,7 @@ export class GameScene extends Phaser.Scene {
 
     if (station) {
       this.localColor = parseColor(station.color);
-
-      // APPLY THE COLOR TO THE SVG HERE:
       this.cursor.setTint(this.localColor);
-
       this.multiplayer?.setColor(station.color);
     }
   }

@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../config";
-import { COLOR_STATIONS, DOORS, OBSTACLES, PLATES } from "../level";
-import type { Door, PressurePlate } from "../level";
+import { COLOR_STATIONS, DOORS, OBSTACLES, PLATES } from "@shared";
+import type { Door, PressurePlate } from "@shared";
 import { parseColor } from "./color";
 
 export interface DoorRuntime {
@@ -26,7 +26,6 @@ export function drawLevel(scene: Phaser.Scene) {
   for (const o of OBSTACLES) {
     g.fillStyle(0x3a4a6e, 1);
     g.fillRect(o.x, o.y, o.width, o.height);
-    // g.lineStyle(2, 0x6a7aa0, 1);
     g.strokeRect(o.x, o.y, o.width, o.height);
   }
 }
@@ -38,7 +37,6 @@ export function buildInteractables(scene: Phaser.Scene) {
     rect: scene.add
       .rectangle(def.x, def.y, def.width, def.height, 0x9a6a2a)
       .setOrigin(0, 0)
-      // .setStrokeStyle(3, 0xd8a24a)
       .setDepth(1),
   }));
 
@@ -48,7 +46,6 @@ export function buildInteractables(scene: Phaser.Scene) {
     rect: scene.add
       .rectangle(def.x, def.y, def.width, def.height, 0xc94f4f)
       .setOrigin(0, 0)
-      // .setStrokeStyle(2, 0xe88)
       .setDepth(2),
   }));
 
@@ -63,7 +60,6 @@ export function buildInteractables(scene: Phaser.Scene) {
         0.7,
       )
       .setOrigin(0, 0)
-      // .setStrokeStyle(3, 0xffffff, 0.65)
       .setDepth(1);
     scene.add
       .text(station.x + station.width / 2, station.y + station.height + 8, station.label, {

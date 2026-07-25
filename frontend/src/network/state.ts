@@ -17,8 +17,20 @@ export interface PressurePlateState {
   active: boolean;
 }
 
+export interface EntityState {
+  id: string;
+  kind: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  color: string;
+}
+
 export interface RoomState {
   players: MapSchema<Player>;
   doors: MapSchema<DoorState>;
   plates: MapSchema<PressurePlateState>;
+  entities: MapSchema<EntityState>;
 }
