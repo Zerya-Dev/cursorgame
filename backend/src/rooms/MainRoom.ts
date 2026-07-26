@@ -6,7 +6,8 @@ import {
   BALL_SPAWN_COLORS,
   BALL_SPAWN_COUNT,
   BUTTON,
-  BUTTON_CLICK_TARGET,
+  BUTTON_CLICKS_PER_PLAYER,
+  BUTTON_MIN_CLICK_TARGET,
   COLOR_STATIONS,
   DOOR_IDS,
   DOORS,
@@ -16,6 +17,7 @@ import {
   TRASH_DOOR_ID,
   TRASH_PLATE_ID,
   WORLD_HEIGHT,
+  WORLD_TOP,
   WORLD_WIDTH,
   circleOverlapsRect,
   evaluatePlate,
@@ -46,7 +48,10 @@ export class MainRoom extends Room {
       if (!player || typeof message.x !== "number" || typeof message.y !== "number") return;
       if (!Number.isFinite(message.x) || !Number.isFinite(message.y)) return;
       player.x = Math.max(PLAYER_RADIUS, Math.min(WORLD_WIDTH - PLAYER_RADIUS, message.x));
-      player.y = Math.max(PLAYER_RADIUS, Math.min(WORLD_HEIGHT - PLAYER_RADIUS, message.y));
+      player.y = Math.max(
+        WORLD_TOP + PLAYER_RADIUS,
+        Math.min(WORLD_HEIGHT - PLAYER_RADIUS, message.y),
+      );
       const station = COLOR_STATIONS.find((candidate) => this.playerOverlaps(player, candidate));
       if (station) player.color = station.color;
     },
@@ -91,6 +96,10 @@ export class MainRoom extends Room {
       if (!player) return;
       const button = this.state.button;
       if (button.stage === 0) {
+        button.target = Math.max(
+          BUTTON_MIN_CLICK_TARGET,
+          this.state.players.size * BUTTON_CLICKS_PER_PLAYER,
+        );
         button.stage = 1;
         this.broadcast("buttonPress", {}, { except: client });
         return;
@@ -116,7 +125,7 @@ export class MainRoom extends Room {
       plate.id = definition.id;
       this.state.plates.set(definition.id, plate);
     }
-    this.state.button.target = BUTTON_CLICK_TARGET;
+    this.state.button.target = BUTTON_MIN_CLICK_TARGET;
     this.setSimulationInterval(() => {
       this.updateGameplay();
       this.world.update(TICK_MS / 1000);
@@ -165,7 +174,10 @@ export class MainRoom extends Room {
       const angle = Math.random() * Math.PI * 2;
       const distance = 20 + Math.random() * 60;
       const x = Math.max(60, Math.min(WORLD_WIDTH - 60, centerX + Math.cos(angle) * distance));
-      const y = Math.max(60, Math.min(WORLD_HEIGHT - 60, centerY + Math.sin(angle) * distance));
+      const y = Math.max(
+        WORLD_TOP + 60,
+        Math.min(WORLD_HEIGHT - 60, centerY + Math.sin(angle) * distance),
+      );
       const speed = 650 + Math.random() * 450;
       this.world.spawnEntity(
         {

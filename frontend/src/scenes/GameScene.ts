@@ -3,6 +3,9 @@ import { WORLD_HEIGHT, WORLD_WIDTH } from "@shared";
 import {
   BUTTON,
   COLOR_STATIONS,
+  CHEESE,
+  END_CREDITS_GITHUB,
+  GITHUB_URL,
   LAVA_ZONES,
   MOVING_LAVA_WALLS,
   MOVING_WALL_ROOM_LEFT,
@@ -12,6 +15,7 @@ import {
   SPAWN_POINT,
   TRASH_PLATE_ID,
   WORLD_TEXTS,
+  WORLD_TOP,
   circleOverlapsRect,
 } from "@shared";
 import type { Rect } from "@shared";
@@ -87,16 +91,20 @@ export class GameScene extends Phaser.Scene {
   private readonly maxSpeed = 1400;
   private readonly sprayMaxDurationMs = 2000;
   private readonly sprayNetworkIntervalMs = 25;
+  private cheese!: Phaser.GameObjects.Image;
+  private cheeseTouched = false;
+  private githubLink!: Phaser.GameObjects.Rectangle;
+  private githubEntered = false;
 
   constructor() {
     super("GameScene");
   }
 
   create() {
-    this.physics?.world?.setBounds?.(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-    this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    this.physics?.world?.setBounds?.(0, WORLD_TOP, WORLD_WIDTH, WORLD_HEIGHT - WORLD_TOP);
+    this.cameras.main.setBounds(0, WORLD_TOP, WORLD_WIDTH, WORLD_HEIGHT - WORLD_TOP);
 
-    drawLevel(this);
+    ({ cheese: this.cheese, githubLink: this.githubLink } = drawLevel(this));
     const { doors, plates } = buildInteractables(this);
     this.doors = doors;
     this.plates = plates;
@@ -291,11 +299,41 @@ export class GameScene extends Phaser.Scene {
     });
     this.multiplayer?.publishPosition(time, this.cursor.x, this.cursor.y);
     this.updateColorStation();
+    this.updateEndCredits();
     this.updateSpray(time);
     // the art points up (-Y), facingAngle is measured from +X
     const heading = this.facingAngle + Math.PI / 2;
     this.cursor.setRotation(heading);
     this.cursorOutline.setPosition(this.cursor.x, this.cursor.y).setRotation(heading);
+  }
+
+  private updateEndCredits() {
+    const touchingCheese =
+      Phaser.Math.Distance.Between(this.cursor.x, this.cursor.y, CHEESE.x, CHEESE.y) <
+      this.radius + CHEESE.size / 2;
+    if (touchingCheese && !this.cheeseTouched) {
+      this.tweens.add({
+        targets: this.cheese,
+        angle: this.cheese.angle + 360,
+        scale: 1.25,
+        duration: 500,
+        yoyo: true,
+        ease: "Back.easeOut",
+      });
+    }
+    this.cheeseTouched = touchingCheese;
+
+    const enteredGithub = circleOverlapsRect(
+      this.cursor.x,
+      this.cursor.y,
+      this.radius,
+      END_CREDITS_GITHUB,
+    );
+    this.githubLink.setFillStyle(0xf2c14e, enteredGithub ? 0.55 : 0.25);
+    if (enteredGithub && !this.githubEntered) {
+      window.open(GITHUB_URL, "_blank", "noopener,noreferrer");
+    }
+    this.githubEntered = enteredGithub;
   }
 
   /**

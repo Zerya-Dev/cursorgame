@@ -1,6 +1,7 @@
 import type { Rect } from "./physics.js";
 
 export const WORLD_WIDTH = 2000;
+export const WORLD_TOP = -600;
 export const LOBBY_HEIGHT = 2150;
 export const CORRIDOR_WIDTH = 320;
 // Increased to 8580 to fit the 6000px moving room + the 750px expanded maze
@@ -166,9 +167,16 @@ export interface EntityKindConfig {
 }
 
 export const OBSTACLES: Obstacle[] = [
-  { x: 0, y: 0, width: WORLD_WIDTH, height: T },
+  // Outer walls
+  { x: 0, y: 0, width: CORRIDOR_LEFT, height: T },
+  { x: CORRIDOR_RIGHT, y: 0, width: WORLD_WIDTH - CORRIDOR_RIGHT, height: T },
   { x: 0, y: 0, width: T, height: MAIN_LOBBY_BOTTOM },
   { x: WORLD_WIDTH - T, y: 0, width: T, height: MAIN_LOBBY_BOTTOM },
+
+  // End-credits room, added above the original map without moving it.
+  { x: 500, y: WORLD_TOP, width: 1000, height: T },
+  { x: 500, y: WORLD_TOP, width: T, height: -WORLD_TOP },
+  { x: 1460, y: WORLD_TOP, width: T, height: -WORLD_TOP },
 
   { x: T, y: T, width: CORRIDOR_LEFT - T, height: MOVING_ROOM_TOP - T },
   {
@@ -292,7 +300,7 @@ export const PLATES: PressurePlate[] = [
     doorIds: [],
     filter: { entityKind: "ball" },
     label: "trash",
-    countLabel: "ALL",
+    countLabel: "30",
   },
   {
     id: "plate-level1-left",
@@ -560,6 +568,10 @@ export const SLIDES: Slide[] = [
 
 // FIXED Texts that got broken in the merge + applied +480 shift
 export const WORLD_TEXTS: WorldText[] = [
+  { x: 1000, y: -510, text: "you found the cheese.", size: 48, rotation: -1 },
+  { x: 1000, y: -390, text: "thank you for playin the prototype", size: 30, rotation: 1 },
+  { x: 1000, y: -300, text: "adamd  -  Norbiros  -  MrPOP  -  TheTwoBoom", size: 27 },
+  { x: 1000, y: -255, text: "and... Claude", size: 28, rotation: -1 },
   {
     x: 1000,
     y: ROOM_TOP + 55, // Dynamic
@@ -637,7 +649,15 @@ export const DECORATIONS: DecorDef[] = [
   { sprite: "barrels", x: 1850, y: 10130, size: 80, rotation: -6 },
 ];
 
-export const CHEESE = { x: WORLD_WIDTH / 2, y: T + CHEESE_LANDING / 2, size: 96 };
+/**
+ * The goal. Kept as named level data rather than a special case in the scene,
+ * because more stages are planned after this one. Sits in the landing above
+ * the maze, reached after clearing it and door "2" (which the trash plate opens).
+ */
+export const CHEESE = { x: WORLD_WIDTH / 2, y: -445, size: 96 };
+
+export const END_CREDITS_GITHUB = { x: 810, y: -180, width: 380, height: 72 };
+export const GITHUB_URL = "https://github.com/Zerya-Dev/cursorgame/";
 
 export interface ButtonDef extends Rect {}
 
@@ -648,7 +668,8 @@ export const BUTTON: ButtonDef = {
   height: 140,
 };
 
-export const BUTTON_CLICK_TARGET = 20;
+export const BUTTON_CLICKS_PER_PLAYER = 50;
+export const BUTTON_MIN_CLICK_TARGET = 100;
 
 export const BALL_SPAWN_COLORS = ["#ef4444", "#f97316", "#facc15", "#4ade80", "#60a5fa", "#a78bfa"];
 

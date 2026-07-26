@@ -7,11 +7,13 @@ import {
   COLOR_STATIONS,
   DECORATIONS,
   DOORS,
+  END_CREDITS_GITHUB,
   FOOTBALL_PITCH,
   MAIN_LOBBY_BOTTOM,
   OBSTACLES,
   PLATES,
   TRASH_PLATE_ID,
+  WORLD_TOP,
   plateCountLabel,
 } from "@shared";
 import type { Door, PressurePlate, Rect } from "@shared";
@@ -21,6 +23,7 @@ import {
   ACCENT_ACTIVE_CSS,
   ACCENT_DANGER,
   ACCENT_IDLE,
+  ACCENT_GOAL,
   FONT_HAND,
   INK,
   INK_CSS,
@@ -231,7 +234,7 @@ function exposedSpans(rect: Rect, side: "top" | "bottom" | "left" | "right") {
     const p = probe(Math.min(at, end));
     // outside the world bounds there is no room to draw into, only blank
     // page: treat it as solid so we never stamp a wall facing off the map.
-    const outOfBounds = p.x < 0 || p.x > WORLD_WIDTH || p.y < 0 || p.y > WORLD_HEIGHT;
+    const outOfBounds = p.x < 0 || p.x > WORLD_WIDTH || p.y < WORLD_TOP || p.y > WORLD_HEIGHT;
     const open = !outOfBounds && !isSolidAt(p.x, p.y, rect);
     if (open && runStart === null) runStart = at;
     if (!open && runStart !== null) {
@@ -325,6 +328,12 @@ export function drawLevel(scene: Phaser.Scene) {
     // baked out) so adjacent tiles share a single seam instead of doubling it
     .setAlpha(0.85)
     .setDepth(DEPTH_FLOOR);
+  scene.add
+    .tileSprite(500, WORLD_TOP, 1000, -WORLD_TOP, "floor_cell")
+    .setOrigin(0, 0)
+    .setTileScale(FLOOR_TILE / 64)
+    .setAlpha(0.85)
+    .setDepth(DEPTH_FLOOR);
 
   // Solid mass reads as blank paper: no floor grid "behind" the walls, so the
   // rooms are what the grid picks out.
@@ -349,6 +358,26 @@ export function drawLevel(scene: Phaser.Scene) {
     .image(CHEESE.x, CHEESE.y, "cheese")
     .setDisplaySize(CHEESE.size, CHEESE.size)
     .setDepth(DEPTH_DECOR);
+  const githubLink = scene.add
+    .rectangle(
+      END_CREDITS_GITHUB.x + END_CREDITS_GITHUB.width / 2,
+      END_CREDITS_GITHUB.y + END_CREDITS_GITHUB.height / 2,
+      END_CREDITS_GITHUB.width,
+      END_CREDITS_GITHUB.height,
+      ACCENT_GOAL,
+      0.25,
+    )
+    .setStrokeStyle(4, INK, 1)
+    .setDepth(DEPTH_DECOR);
+  scene.add
+    .text(githubLink.x, githubLink.y, "enter to visit GitHub  ->", {
+      fontFamily: FONT_HAND,
+      fontSize: "27px",
+      color: INK_CSS,
+    })
+    .setOrigin(0.5)
+    .setDepth(DEPTH_DECOR + 1);
+
   // a slow bob so the goal reads as the one live thing in the room
   scene.tweens.add({
     targets: cheese,
@@ -409,6 +438,8 @@ export function drawLevel(scene: Phaser.Scene) {
   // density, so zoom in to keep objects at a readable on-screen size.
   // Handy while authoring levels: setZoom(0.35) frames the whole map.
   scene.cameras.main.setZoom(1.5);
+
+  return { cheese, githubLink };
 }
 
 export function buildInteractables(scene: Phaser.Scene) {
