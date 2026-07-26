@@ -10,3 +10,6 @@ export const COLYSEUS_URL =
   (import.meta.env.DEV
     ? "ws://localhost:2567"
     : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`);
+
+export const CHEATS_ENABLED =
+  import.meta.env.DEV || window.location.hostname === "cursorgame.norbiros.dev";

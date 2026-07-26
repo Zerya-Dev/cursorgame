@@ -65,6 +65,7 @@ import { createEntityView } from "../entities/registry";
 import type { EntityView, PredictionContext } from "../entities/registry";
 import { MultiplayerClient } from "../network/MultiplayerClient";
 import type { RoomState } from "../network/state";
+import { CHEATS_ENABLED } from "../config";
 
 export class GameScene extends Phaser.Scene {
   private cursor!: Phaser.GameObjects.Image;
@@ -217,7 +218,7 @@ export class GameScene extends Phaser.Scene {
     this.game.events.on(Phaser.Core.Events.BLUR, stopSpray);
 
     this.input.keyboard?.on("keydown-ESC", () => this.input.mouse?.releasePointerLock());
-    if (import.meta.env.DEV) {
+    if (CHEATS_ENABLED) {
       this.input.keyboard?.on("keydown-F2", (event: KeyboardEvent) => {
         if (event.repeat) return;
         this.noclip = !this.noclip;
@@ -351,7 +352,7 @@ export class GameScene extends Phaser.Scene {
       },
       solids,
     });
-    this.multiplayer?.publishPosition(time, this.cursor.x, this.cursor.y);
+    this.multiplayer?.publishPosition(time, this.cursor.x, this.cursor.y, this.facingAngle);
     this.updateColorStation();
     this.updateEndCredits();
     this.updateSpray(time);
@@ -476,7 +477,12 @@ export class GameScene extends Phaser.Scene {
     this.pendingInput.set(0, 0);
     this.ride = undefined;
     this.stopSpraying();
-    this.multiplayer?.publishPosition(this.time.now, SPAWN_POINT.x, SPAWN_POINT.y);
+    this.multiplayer?.publishPosition(
+      this.time.now,
+      SPAWN_POINT.x,
+      SPAWN_POINT.y,
+      this.facingAngle,
+    );
     this.cameras.main.flash(280, 255, 245, 220);
     this.status.setText("boom. back to spawn.");
   }
@@ -609,7 +615,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateHint(locked = this.input.mouse?.locked ?? false) {
-    const debugHint = import.meta.env.DEV
+    const debugHint = CHEATS_ENABLED
       ? `\nF2 noclip + lava immunity: ${this.noclip ? "on" : "off"}\nF4 speed: ${this.speedBoost ? "on" : "off"}`
       : "";
     if (this.touchNavigation) {

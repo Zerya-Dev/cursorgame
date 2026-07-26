@@ -5,6 +5,7 @@ export interface Player {
   color: string;
   x: number;
   y: number;
+  angle: number;
   charged: boolean;
 }
 

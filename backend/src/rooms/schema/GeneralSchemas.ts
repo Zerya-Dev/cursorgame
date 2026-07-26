@@ -5,6 +5,7 @@ export class Player extends Schema {
   @type("string") color = "#4ade80";
   @type("number") x = 1600;
   @type("number") y = 1200;
+  @type("number") angle = 0;
   @type("boolean") charged = false;
 }
 

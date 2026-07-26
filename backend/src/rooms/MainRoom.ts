@@ -53,15 +53,29 @@ export class MainRoom extends Room {
   private propOutcomes = new Map<string, PropOutcome>();
 
   messages = {
-    move: (client: Client, message: { x?: unknown; y?: unknown }) => {
+    move: (client: Client, message: { x?: unknown; y?: unknown; angle?: unknown }) => {
       const player = this.state.players.get(client.sessionId);
-      if (!player || typeof message.x !== "number" || typeof message.y !== "number") return;
-      if (!Number.isFinite(message.x) || !Number.isFinite(message.y)) return;
+      if (
+        !player ||
+        typeof message.x !== "number" ||
+        typeof message.y !== "number" ||
+        typeof message.angle !== "number"
+      ) {
+        return;
+      }
+      if (
+        !Number.isFinite(message.x) ||
+        !Number.isFinite(message.y) ||
+        !Number.isFinite(message.angle)
+      ) {
+        return;
+      }
       player.x = Math.max(PLAYER_RADIUS, Math.min(WORLD_WIDTH - PLAYER_RADIUS, message.x));
       player.y = Math.max(
         WORLD_TOP + PLAYER_RADIUS,
         Math.min(WORLD_HEIGHT - PLAYER_RADIUS, message.y),
       );
+      player.angle = message.angle;
       const station = COLOR_STATIONS.find((candidate) => this.playerOverlaps(player, candidate));
       if (station) player.color = station.color;
     },

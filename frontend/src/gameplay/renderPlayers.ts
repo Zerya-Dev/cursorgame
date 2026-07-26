@@ -12,7 +12,6 @@ interface RemotePlayer {
   heading: number;
 }
 
-const TURN_EPSILON = 0.5; // physics
 const INTERPOLATION_RATE = 14;
 const SNAP_DISTANCE = 400;
 
@@ -70,9 +69,6 @@ export class RenderPlayers {
         remote.target.x,
         remote.target.y,
       );
-      const fromX = remote.cursor.x;
-      const fromY = remote.cursor.y;
-
       if (distance > SNAP_DISTANCE) {
         remote.cursor.setPosition(remote.target.x, remote.target.y);
       } else {
@@ -80,11 +76,6 @@ export class RenderPlayers {
         remote.cursor.y = Phaser.Math.Linear(remote.cursor.y, remote.target.y, interpolation);
       }
 
-      const dx = remote.cursor.x - fromX;
-      const dy = remote.cursor.y - fromY;
-      if (Math.hypot(dx, dy) > TURN_EPSILON) {
-        remote.heading = Math.atan2(dy, dx) + Math.PI / 2;
-      }
       remote.cursor.setRotation(remote.heading);
       remote.ink.setPosition(remote.cursor.x, remote.cursor.y).setRotation(remote.heading);
     }

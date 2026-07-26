@@ -16,6 +16,7 @@ export class MultiplayerClient {
   private room?: Room<RoomState>;
   private lastSentX = Number.NaN;
   private lastSentY = Number.NaN;
+  private lastSentAngle = Number.NaN;
   private nextUpdate = 0;
   private active = false;
   private connecting?: Promise<void>;
@@ -70,6 +71,7 @@ export class MultiplayerClient {
     this.room = room;
     this.lastSentX = Number.NaN;
     this.lastSentY = Number.NaN;
+    this.lastSentAngle = Number.NaN;
     this.nextUpdate = 0;
     room.onStateChange((state) => this.events.onState(state, room.sessionId));
     room.onMessage("spray", (message: { x: number; y: number; angle: number; color: number }) =>
@@ -111,12 +113,13 @@ export class MultiplayerClient {
     });
   }
 
-  publishPosition(time: number, x: number, y: number) {
+  publishPosition(time: number, x: number, y: number, angle: number) {
     if (!this.room || time < this.nextUpdate) return;
-    if (x === this.lastSentX && y === this.lastSentY) return;
-    this.room.send("move", { x, y });
+    if (x === this.lastSentX && y === this.lastSentY && angle === this.lastSentAngle) return;
+    this.room.send("move", { x, y, angle });
     this.lastSentX = x;
     this.lastSentY = y;
+    this.lastSentAngle = angle;
     this.nextUpdate = time + 50;
   }
 
