@@ -35,4 +35,8 @@ export const ACCENT_GOAL_CSS = "#f2c14e";
 export const ACCENT_DANGER = 0xc4553f;
 export const ACCENT_DANGER_CSS = "#c4553f";
 
+/** the electric source, and the flicker on a charged cursor */
+export const ACCENT_SPARK = 0xfff59d;
+export const ACCENT_SPARK_CSS = "#fff59d";
+
 export const FONT_HAND = '"Patrick Hand", "Comic Sans MS", cursive';

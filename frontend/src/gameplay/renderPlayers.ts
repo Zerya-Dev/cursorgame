@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import type { RoomState } from "../network/state";
 import { parseColor } from "./color";
+import { setElectrified } from "./electric";
 
 interface RemotePlayer {
   cursor: Phaser.GameObjects.Image;
@@ -49,7 +50,8 @@ export class RenderPlayers {
       }
       remote.target.set(player.x, player.y);
       remote.color = color;
-      remote.cursor.setTint(color);
+      if (!player.charged) remote.cursor.setTint(color);
+      setElectrified(this.scene, remote.cursor, remote.ink, color, player.charged);
     });
 
     for (const [sessionId, remote] of this.players) {

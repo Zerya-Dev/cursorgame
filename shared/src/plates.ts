@@ -4,12 +4,14 @@ export interface PlateOccupant {
   /** "player" or an ENTITY_KINDS key */
   entityKind: string;
   color: string;
+  charged?: boolean;
 }
 
 export function occupantMatchesFilter(occupant: PlateOccupant, filter?: PlateFilter): boolean {
   if (!filter) return true;
   if (filter.entityKind && occupant.entityKind !== filter.entityKind) return false;
   if (filter.color && occupant.color.toLowerCase() !== filter.color.toLowerCase()) return false;
+  if (filter.charged && !occupant.charged) return false;
   return true;
 }
 
