@@ -10,11 +10,16 @@ import {
 export class Entity extends Schema {
   @type("string") id = "";
   @type("string") kind = "";
-  @type("number") x = 0;
-  @type("number") y = 0;
-  @type("number") vx = 0;
-  @type("number") vy = 0;
-  @type("number") radius = 20;
+  /**
+   * Position and velocity are quantised to whole units on the wire. Clients run the
+   * shared physics locally and only ease toward these values, so sub-pixel precision
+   * would be discarded anyway. See `BallView`.
+   */
+  @type("int16") x = 0;
+  @type("int16") y = 0;
+  @type("int16") vx = 0;
+  @type("int16") vy = 0;
+  @type("uint16") radius = 20;
   @type("string") color = "#e0e0e0";
 }
 

@@ -3,6 +3,7 @@ import { MainRoomState } from "./schema/MainRoomState.js";
 import { Door, InteractivePropState, Player, PressurePlate } from "./schema/GeneralSchemas.js";
 import { World } from "../game/World.js";
 import {
+  ANGLE_SCALE,
   BALL_SPAWN_COLORS,
   BALL_SPAWN_COUNT,
   BUTTON,
@@ -38,6 +39,14 @@ const trashPlateDef = PLATES.find((plate) => plate.id === TRASH_PLATE_ID);
 if (!trashPlateDef) throw new Error(`Missing plate definition: ${TRASH_PLATE_ID}`);
 const TRASH_PLATE: PlateDef = trashPlateDef;
 
+/** Wrap into (-pi, pi] so the fixed-point angle always fits int16. */
+function normalizeAngle(angle: number) {
+  const wrapped = angle % (Math.PI * 2);
+  if (wrapped > Math.PI) return wrapped - Math.PI * 2;
+  if (wrapped <= -Math.PI) return wrapped + Math.PI * 2;
+  return wrapped;
+}
+
 const DOOR_HOLD_MS = 600;
 const TICK_MS = 20;
 const PROP_OUTCOMES = ["bomb", "bomb", "bomb", "speed", "speed", "speed", "nice", "nice"] as const;
@@ -70,12 +79,13 @@ export class MainRoom extends Room {
       ) {
         return;
       }
-      player.x = Math.max(PLAYER_RADIUS, Math.min(WORLD_WIDTH - PLAYER_RADIUS, message.x));
-      player.y = Math.max(
-        WORLD_TOP + PLAYER_RADIUS,
-        Math.min(WORLD_HEIGHT - PLAYER_RADIUS, message.y),
+      player.x = Math.round(
+        Math.max(PLAYER_RADIUS, Math.min(WORLD_WIDTH - PLAYER_RADIUS, message.x)),
       );
-      player.angle = message.angle;
+      player.y = Math.round(
+        Math.max(WORLD_TOP + PLAYER_RADIUS, Math.min(WORLD_HEIGHT - PLAYER_RADIUS, message.y)),
+      );
+      player.angle = Math.round(normalizeAngle(message.angle) * ANGLE_SCALE);
       const station = COLOR_STATIONS.find((candidate) => this.playerOverlaps(player, candidate));
       if (station) player.color = station.color;
     },
@@ -122,7 +132,7 @@ export class MainRoom extends Room {
       if (button.stage === 0) {
         button.target = Math.max(
           BUTTON_MIN_CLICK_TARGET,
-          this.state.players.size * BUTTON_CLICKS_PER_PLAYER,
+          this.activePlayers().length * BUTTON_CLICKS_PER_PLAYER,
         );
         button.stage = 1;
         this.broadcast("buttonPress", {}, { except: client });
@@ -222,9 +232,15 @@ export class MainRoom extends Room {
   }
 
   async onLeave(client: Client, code: CloseCode) {
+    const player = this.state.players.get(client.sessionId);
     if (code !== CloseCode.CONSENTED) {
       try {
+        // Park the player as disconnected so their frozen body stops counting
+        // toward plate rules and the electric chain while they are away.
+        if (player) player.connected = false;
         await this.allowReconnection(client, 10);
+        const rejoined = this.state.players.get(client.sessionId);
+        if (rejoined) rejoined.connected = true;
         console.log(client.sessionId, "reconnected!");
         return;
       } catch {
@@ -275,9 +291,22 @@ export class MainRoom extends Room {
     return circleOverlapsRect(player.x, player.y, PLAYER_RADIUS, rect);
   }
 
+  /**
+   * Players still awaiting reconnection keep their schema entry so they can resume,
+   * but they must not influence gameplay: a frozen body left on (or off) a plate
+   * would otherwise stall `allPlayers` / `balance` rules for the whole grace period.
+   */
+  private activePlayers(): Player[] {
+    const players: Player[] = [];
+    for (const player of this.state.players.values()) {
+      if (player.connected) players.push(player);
+    }
+    return players;
+  }
+
   private plateOccupants(definition: Rect): PlateOccupant[] {
     const occupants: PlateOccupant[] = [];
-    for (const player of this.state.players.values()) {
+    for (const player of this.activePlayers()) {
       if (this.playerOverlaps(player, definition)) {
         occupants.push({ entityKind: "player", color: player.color, charged: player.charged });
       }
@@ -287,7 +316,7 @@ export class MainRoom extends Room {
   }
 
   private updateElectricity() {
-    const players = [...this.state.players.values()];
+    const players = this.activePlayers();
     const charged = new Set<Player>();
     for (const player of players) {
       if (ELECTRIC_SOURCES.some((source) => this.playerOverlaps(player, source))) {
@@ -311,7 +340,7 @@ export class MainRoom extends Room {
   }
 
   private hasEndPowerChain() {
-    const players = [...this.state.players.values()];
+    const players = this.activePlayers();
     const connected = new Set<Player>(
       players.filter((player) => this.playerOverlaps(player, END_POWER_SOURCE)),
     );
@@ -336,7 +365,7 @@ export class MainRoom extends Room {
     this.updateElectricity();
     const now = Date.now();
     const endPowerConnected = this.hasEndPowerChain();
-    const totalPlayers = this.state.players.size;
+    const totalPlayers = this.activePlayers().length;
 
     const occupantsByPlate = new Map<string, PlateOccupant[]>();
     const matchingCounts = new Map<string, number>();

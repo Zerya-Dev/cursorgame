@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { ANGLE_SCALE } from "@shared";
 import type { RoomState } from "../network/state";
 import { parseColor } from "./color";
 import { setElectrified } from "./electric";
@@ -25,6 +26,9 @@ export class RenderPlayers {
 
     state.players.forEach((player, sessionId) => {
       if (sessionId === localSessionId) return;
+      // Dropped players linger in the state during their reconnection grace
+      // period; hide the frozen body until they actually come back.
+      if (!player.connected) return;
       active.add(sessionId);
 
       const color = parseColor(player.color);
@@ -46,6 +50,7 @@ export class RenderPlayers {
         this.players.set(sessionId, remote);
       }
       remote.target.set(player.x, player.y);
+      remote.heading = player.angle / ANGLE_SCALE + Math.PI / 2;
       remote.color = color;
       remote.cursor.setTint(color);
       setElectrified(this.scene, remote.cursor, player.charged);

@@ -8,6 +8,12 @@ export const CORRIDOR_WIDTH = 320;
 
 export const PLAYER_RADIUS = 12;
 
+/**
+ * Fixed-point scale for the networked player angle. Angles are normalised to
+ * (-pi, pi] and sent as `int16`, so pi * ANGLE_SCALE must stay under 32767.
+ */
+export const ANGLE_SCALE = 10000;
+
 export type Obstacle = Rect;
 
 export interface Door extends Rect {

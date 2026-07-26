@@ -3,10 +3,14 @@ import { Schema, type } from "@colyseus/schema";
 export class Player extends Schema {
   @type("string") name = "";
   @type("string") color = "#4ade80";
-  @type("number") x = 1600;
-  @type("number") y = 1200;
-  @type("number") angle = 0;
+  /** World coordinates, rounded to whole pixels so they fit int16 (x 0..2000, y -600..10770). */
+  @type("int16") x = 1600;
+  @type("int16") y = 1200;
+  /** Facing angle in radians, fixed-point via {@link ANGLE_SCALE}. */
+  @type("int16") angle = 0;
   @type("boolean") charged = false;
+  /** False while the player is dropped but still inside the reconnection grace period. */
+  @type("boolean") connected = true;
 }
 
 export class Door extends Schema {

@@ -5,8 +5,10 @@ export interface Player {
   color: string;
   x: number;
   y: number;
+  /** Fixed-point radians; divide by `ANGLE_SCALE` before use. */
   angle: number;
   charged: boolean;
+  connected: boolean;
 }
 
 export interface DoorState {
