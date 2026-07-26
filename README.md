@@ -33,3 +33,8 @@ docker compose up --build
 Open `http://localhost:2567`. Set `PORT` when deploying to a platform that
 requires a specific listening port. HTTPS deployments automatically use secure
 WebSockets (`wss://`) on the same hostname.
+
+## AI
+
+LLMs were used during the development of the initial prototype due to limited time and the complexity of the game.
+AI image generation **was not** used for any project assets.
