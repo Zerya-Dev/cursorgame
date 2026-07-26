@@ -5,8 +5,6 @@ export const WORLD_WIDTH = MAP_WIDTH;
 export const WORLD_TOP = -600;
 export const LOBBY_HEIGHT = 2150;
 export const CORRIDOR_WIDTH = 320;
-export const CORRIDOR_HEIGHT = 8620;
-export const WORLD_HEIGHT = LOBBY_HEIGHT + CORRIDOR_HEIGHT;
 
 export const PLAYER_RADIUS = 12;
 
@@ -74,7 +72,6 @@ const T = 40; // wall thickness
 
 /*  REFERENCE POINTS IN WORLD  */
 
-const LOBBY_TOP = CORRIDOR_HEIGHT;
 const CORRIDOR_LEFT = (MAP_WIDTH - CORRIDOR_WIDTH) / 2;
 const CORRIDOR_RIGHT = CORRIDOR_LEFT + CORRIDOR_WIDTH;
 
@@ -95,9 +92,6 @@ const MOVING_ROOM_ENTRANCE = { x: MAP_WIDTH / 2, y: MOVING_ROOM_BOTTOM - 40 };
 
 export const END_POWER_MIN_PLAYERS = 3;
 export const END_POWER_PLATE_ID = "plate-end-power";
-export const END_POWER_SOURCE: Rect = { x: 1580, y: 9420, width: 60, height: 60 };
-export const END_POWER_TARGET: Rect = { x: 1790, y: 9400, width: 100, height: 100 };
-export const POWERED_CAMPFIRE = { x: 1840, y: 9450, size: 110 };
 
 const MOVING_ROOM_STUB_BELOW = 130; // corridor between the maze and this room
 
@@ -144,11 +138,29 @@ const LEVEL1_BOTTOM = LEVEL1_TOP + LEVEL1_HEIGHT;
 const LEVEL1_LEFT = 500;
 const LEVEL1_RIGHT = 1500;
 
+// The lobby below was laid out against a fixed LOBBY_TOP of 8620. Anchor it to the end
+// of the corridor chain instead (plus the original slack) and shift the whole lobby by
+// the difference, so shortening a room above actually shortens the level.
+const LOBBY_ANCHOR = 8620;
+const LOBBY_STUB = 310;
+const LOBBY_TOP = LEVEL1_BOTTOM + LOBBY_STUB;
+const LOBBY_OFFSET = LOBBY_TOP - LOBBY_ANCHOR;
+export const CORRIDOR_HEIGHT = LOBBY_TOP;
+export const WORLD_HEIGHT = LOBBY_HEIGHT + CORRIDOR_HEIGHT;
+
+function shiftY<T extends { y: number }>(item: T): T {
+  return { ...item, y: item.y + LOBBY_OFFSET };
+}
+
+export const END_POWER_SOURCE: Rect = shiftY({ x: 1580, y: 9420, width: 60, height: 60 });
+export const END_POWER_TARGET: Rect = shiftY({ x: 1790, y: 9400, width: 100, height: 100 });
+export const POWERED_CAMPFIRE = shiftY({ x: 1840, y: 9450, size: 110 });
+
 export const MAIN_LOBBY_BOTTOM = CORRIDOR_HEIGHT + 1800;
 
 const HALL_LEFT_WALL_X = 500;
 const HALL_RIGHT_WALL_X = 1500;
-const ROOM_GAP_TOP = 9120;
+const ROOM_GAP_TOP = 9120 + LOBBY_OFFSET;
 const ROOM_GAP_HEIGHT = 200;
 const ROOM_GAP_BOTTOM = ROOM_GAP_TOP + ROOM_GAP_HEIGHT;
 
@@ -469,7 +481,7 @@ export const PLATES: PressurePlate[] = [
     count: { mode: "balance", withPlateId: "plate-level1-left" },
   },
 
-  {
+  shiftY({
     id: "plate-gate-1",
     x: 805,
     y: 8770,
@@ -478,8 +490,8 @@ export const PLATES: PressurePlate[] = [
     doorIds: ["0"],
     filter: { entityKind: "player", color: "#5b8fd9" },
     count: { mode: "exact", value: 3 },
-  },
-  {
+  }),
+  shiftY({
     id: "plate-gate-2",
     x: 955,
     y: 8770,
@@ -488,8 +500,8 @@ export const PLATES: PressurePlate[] = [
     doorIds: ["0"],
     filter: { entityKind: "player", color: "#8b5a3c" },
     count: { mode: "exact", value: 1 },
-  },
-  {
+  }),
+  shiftY({
     id: "plate-gate-3",
     x: 1105,
     y: 8770,
@@ -498,8 +510,8 @@ export const PLATES: PressurePlate[] = [
     doorIds: ["0"],
     filter: { entityKind: "player" },
     count: { mode: "atLeast", value: 1 },
-  },
-  {
+  }),
+  shiftY({
     id: "plate-colour-inside",
     x: 370,
     y: 9160,
@@ -507,8 +519,8 @@ export const PLATES: PressurePlate[] = [
     height: 120,
     doorIds: ["colour"],
     count: { mode: "atLeast", value: 1 },
-  },
-  {
+  }),
+  shiftY({
     id: "plate-colour-outside",
     x: 570,
     y: 9160,
@@ -516,8 +528,8 @@ export const PLATES: PressurePlate[] = [
     height: 120,
     doorIds: ["colour"],
     count: { mode: "atLeast", value: 1 },
-  },
-  {
+  }),
+  shiftY({
     id: "plate-practice-1",
     x: 1370,
     y: 8990,
@@ -525,8 +537,8 @@ export const PLATES: PressurePlate[] = [
     height: 110,
     doorIds: ["practice"],
     count: { mode: "atLeast", value: 1 },
-  },
-  {
+  }),
+  shiftY({
     id: "plate-practice-2",
     x: 1370,
     y: 9340,
@@ -534,7 +546,7 @@ export const PLATES: PressurePlate[] = [
     height: 110,
     doorIds: ["practice"],
     count: { mode: "atLeast", value: 1 },
-  },
+  }),
 ];
 
 export const TRASH_PLATE_ID = "plate-trash";
@@ -549,12 +561,12 @@ export const DOOR_RECTS: Record<string, Rect> = Object.fromEntries(
 export const DOOR_IDS = DOORS.map((door) => door.id);
 
 export const COLOR_STATIONS: ColorStation[] = [
-  { color: "#c4553f", label: "RED", x: 100, y: 8820, width: 70, height: 70 },
-  { color: "#5bbf6a", label: "GREEN", x: 215, y: 8820, width: 70, height: 70 },
-  { color: "#5b8fd9", label: "BLUE", x: 330, y: 8820, width: 70, height: 70 },
-  { color: "#e5b83f", label: "YELLOW", x: 100, y: 8930, width: 70, height: 70 },
-  { color: "#9567c6", label: "PURPLE", x: 215, y: 8930, width: 70, height: 70 },
-  { color: "#8b5a3c", label: "BROWN", x: 330, y: 8930, width: 70, height: 70 },
+  shiftY({ color: "#c4553f", label: "RED", x: 100, y: 8820, width: 70, height: 70 }),
+  shiftY({ color: "#5bbf6a", label: "GREEN", x: 215, y: 8820, width: 70, height: 70 }),
+  shiftY({ color: "#5b8fd9", label: "BLUE", x: 330, y: 8820, width: 70, height: 70 }),
+  shiftY({ color: "#e5b83f", label: "YELLOW", x: 100, y: 8930, width: 70, height: 70 }),
+  shiftY({ color: "#9567c6", label: "PURPLE", x: 215, y: 8930, width: 70, height: 70 }),
+  shiftY({ color: "#8b5a3c", label: "BROWN", x: 330, y: 8930, width: 70, height: 70 }),
 ];
 
 function mulberry32(seed: number): () => number {
@@ -681,7 +693,7 @@ export const MOVING_LAVA_WALLS: MovingLavaWall[] = Array.from(
   }),
 );
 
-export const FOOTBALL_PITCH: Rect = { x: 90, y: 9440, width: 360, height: 840 };
+export const FOOTBALL_PITCH: Rect = shiftY({ x: 90, y: 9440, width: 360, height: 840 });
 
 export interface Slide {
   id: string;
@@ -695,7 +707,7 @@ export interface Slide {
 export const SLIDES: Slide[] = [
   {
     id: "slide-lobby-to-practice",
-    entry: { x: 900, y: 10070, width: 170, height: 170 },
+    entry: shiftY({ x: 900, y: 10070, width: 170, height: 170 }),
     path: [
       { x: 985, y: 10155 },
       { x: 1000, y: 10420 },
@@ -713,7 +725,7 @@ export const SLIDES: Slide[] = [
       { x: 1470, y: 10470 },
       { x: 1590, y: 10360 },
       { x: 1760, y: 10140 },
-    ],
+    ].map(shiftY),
     speed: 1000,
     acceleration: 900,
     launchSpeed: 4000,
@@ -725,20 +737,20 @@ export const WORLD_TEXTS: WorldText[] = [
   { x: 1000, y: -390, text: "thank you for playin the prototype", size: 30, rotation: 1 },
   { x: 1000, y: -300, text: "adamd  -  Norbiros  -  MrPOP  -  TheTwoBoom", size: 27 },
   { x: 1000, y: 260, text: "left-click anything suspicious", size: 26, rotation: -1 },
-  {
+  shiftY({
     x: 1740,
     y: 9340,
     text: "complete the circuit with your bodies",
     size: 20,
     rotation: -1,
-  },
-  {
+  }),
+  shiftY({
     x: 1740,
     y: 9370,
     text: "connect the electricity to the *hackclub campfire* with your bodies",
     size: 16,
     rotation: -1,
-  },
+  }),
   { x: 1000, y: -255, text: "and... Claude", size: 28, rotation: -1 },
   {
     x: 1000,
@@ -754,7 +766,7 @@ export const WORLD_TEXTS: WorldText[] = [
     size: 26,
     rotation: 1,
   },
-  { x: 1000, y: 8690, text: "the cheese is a lie.", size: 48, rotation: -2 },
+  shiftY({ x: 1000, y: 8690, text: "the cheese is a lie.", size: 48, rotation: -2 }),
   {
     x: 1000,
     y: MAZE_BOTTOM - 55,
@@ -766,32 +778,32 @@ export const WORLD_TEXTS: WorldText[] = [
   { x: MAZE_GATE_B_X + 100, y: MAZE_GATE_B_Y + 52, text: "GATE B", size: 23, rotation: 1 },
   { x: MAZE_GATE_A_X + 100, y: MAZE_GATE_A_Y + 52, text: "GATE A", size: 23, rotation: -1 },
   { x: 1000, y: MAZE_TOP + 210, text: "EXIT LOCK: bring the ball from sector D", size: 25 },
-  {
+  shiftY({
     x: 1005,
     y: 8905,
     text: "you need 5+ mice to play the game!",
     size: 22,
     rotation: -1,
-  },
-  { x: 1120, y: 9920, text: "look! a droga szybkiego ruchu!", size: 24, rotation: 2 },
-  { x: 270, y: 9920, text: "try using the right button", size: 24, rotation: 2 },
-  { x: 270, y: 8820, text: "pick a colour", size: 28, rotation: -3 },
-  {
+  }),
+  shiftY({ x: 1120, y: 9920, text: "look! a droga szybkiego ruchu!", size: 24, rotation: 2 }),
+  shiftY({ x: 270, y: 9920, text: "try using the right mouse button", size: 24, rotation: 2 }),
+  shiftY({ x: 270, y: 8820, text: "pick a colour", size: 28, rotation: -3 }),
+  shiftY({
     x: 1100,
     y: 9090,
     text: "try the pressure plates here. nothing bad happens.",
     size: 22,
     rotation: 1,
-  },
-  { x: 1750, y: 8770, text: "no cheese in here :((", size: 24, rotation: -2 },
-  { x: 1000, y: 9580, text: "you - are - a - mouse", size: 22, rotation: 2 },
-  {
+  }),
+  shiftY({ x: 1750, y: 8770, text: "no cheese in here :((", size: 24, rotation: -2 }),
+  shiftY({ x: 1000, y: 9580, text: "you - are - a - mouse", size: 22, rotation: 2 }),
+  shiftY({
     x: 1000,
     y: 9670,
     text: "try to push this around while you wait for others v",
     size: 20,
     rotation: -1,
-  },
+  }),
 ];
 
 export interface DecorDef {
@@ -812,87 +824,7 @@ export interface InteractivePropDef extends Rect {
 }
 
 // Small cursor toys live inside the actual course, not only in the waiting lobby.
-export const INTERACTIVE_PROPS: InteractivePropDef[] = [
-  {
-    id: "barrel-lane-1",
-    kind: "barrel",
-    label: "click to inspect",
-    x: 1750,
-    y: 4710,
-    width: 82,
-    height: 82,
-    rotation: -5,
-  },
-  {
-    id: "barrel-lane-2",
-    kind: "barrel",
-    label: "click to inspect",
-    x: 850,
-    y: 5230,
-    width: 82,
-    height: 82,
-    rotation: 7,
-  },
-  {
-    id: "barrel-lane-3",
-    kind: "barrel",
-    label: "click to inspect",
-    x: 1750,
-    y: 5490,
-    width: 82,
-    height: 82,
-    rotation: 3,
-  },
-  {
-    id: "chest-maze-1",
-    kind: "chest",
-    label: "click to peek",
-    x: 850,
-    y: 6010,
-    width: 86,
-    height: 72,
-    rotation: -4,
-  },
-  {
-    id: "chest-maze-2",
-    kind: "chest",
-    label: "click to peek",
-    x: 400,
-    y: 5880,
-    width: 86,
-    height: 72,
-    rotation: 5,
-  },
-  {
-    id: "trapdoor-maze",
-    kind: "trapdoor",
-    label: "click to inspect",
-    x: 850,
-    y: 6530,
-    width: 96,
-    height: 96,
-  },
-  {
-    id: "chest-tax",
-    kind: "chest",
-    label: "click to inspect",
-    x: 700,
-    y: 7310,
-    width: 92,
-    height: 76,
-    rotation: -3,
-  },
-  {
-    id: "trapdoor-balance",
-    kind: "trapdoor",
-    label: "click to inspect",
-    x: 1450,
-    y: 7440,
-    width: 92,
-    height: 92,
-    rotation: 4,
-  },
-];
+export const INTERACTIVE_PROPS: InteractivePropDef[] = [];
 
 export const DECORATIONS: DecorDef[] = [
   { sprite: "crate", x: 650, y: 8970, size: 70, rotation: 4 },
@@ -923,7 +855,7 @@ export const DECORATIONS: DecorDef[] = [
   { sprite: "tree", x: 1850, y: 9920, size: 85, rotation: 0 },
   { sprite: "puddle", x: 1700, y: 10070, size: 105, rotation: 0 },
   { sprite: "barrels", x: 1850, y: 10170, size: 80, rotation: -6 },
-];
+].map(shiftY);
 
 export const CHEESE = { x: MAP_WIDTH / 2, y: -445, size: 96 };
 
@@ -958,7 +890,7 @@ export const ENTITY_KINDS: Record<string, EntityKindConfig> = {
 };
 
 export const ENTITIES: EntityDef[] = [
-  { kind: "ball", id: "ball-main", x: 1000, y: 9770, radius: 46, color: "#e0e0e0" },
+  shiftY({ kind: "ball", id: "ball-main", x: 1000, y: 9770, radius: 46, color: "#e0e0e0" }),
   {
     kind: "ball",
     id: "ball-maze-key",
