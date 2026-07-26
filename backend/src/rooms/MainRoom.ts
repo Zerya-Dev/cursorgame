@@ -216,7 +216,7 @@ export class MainRoom extends Room {
     for (const player of players) {
       if (this.playerOverlaps(player, ELECTRIC_SOURCE)) charged.add(player);
     }
-    for (let grew = true; grew; ) {
+    for (let grew = true; grew;) {
       grew = false;
       for (const a of players) {
         if (!charged.has(a)) continue;

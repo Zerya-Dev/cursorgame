@@ -448,13 +448,7 @@ export class GameScene extends Phaser.Scene {
 
   private syncState(state: RoomState, localSessionId: string) {
     this.renderPlayers.sync(state, localSessionId);
-    setElectrified(
-      this,
-      this.cursor,
-      this.cursorOutline,
-      this.localColor,
-      state.players.get(localSessionId)?.charged ?? false,
-    );
+    setElectrified(this, this.cursor, state.players.get(localSessionId)?.charged ?? false);
 
     state.doors.forEach((door, id) => {
       const runtime = this.doors.find(({ def }) => def.id === id);

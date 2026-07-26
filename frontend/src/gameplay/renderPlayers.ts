@@ -50,8 +50,8 @@ export class RenderPlayers {
       }
       remote.target.set(player.x, player.y);
       remote.color = color;
-      if (!player.charged) remote.cursor.setTint(color);
-      setElectrified(this.scene, remote.cursor, remote.ink, color, player.charged);
+      remote.cursor.setTint(color);
+      setElectrified(this.scene, remote.cursor, player.charged);
     });
 
     for (const [sessionId, remote] of this.players) {

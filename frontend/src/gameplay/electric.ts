@@ -1,47 +1,50 @@
 import Phaser from "phaser";
 import type { Rect } from "@shared";
-import { ACCENT_SPARK, INK } from "./palette";
+import { ACCENT_SPARK } from "./palette";
+
+function sparkTexture(scene: Phaser.Scene) {
+  if (!scene.textures.exists("sparkDot")) {
+    scene.add
+      .graphics()
+      .fillStyle(0xffffff)
+      .fillCircle(2, 2, 2)
+      .generateTexture("sparkDot", 4, 4)
+      .destroy();
+  }
+  return "sparkDot";
+}
+
+function sparkEmitter(scene: Phaser.Scene, x: number, y: number) {
+  return scene.add.particles(x, y, sparkTexture(scene), {
+    tint: ACCENT_SPARK,
+    blendMode: "ADD",
+    speed: { min: 30, max: 90 },
+    lifespan: { min: 150, max: 320 },
+    scale: { start: 1.6, end: 0 },
+    quantity: 1,
+    frequency: 25,
+  });
+}
 
 export function buildElectricSource(scene: Phaser.Scene, source: Rect) {
-  const cx = source.x + source.width / 2;
-  const cy = source.y + source.height / 2;
-  const dot = scene.add
-    .circle(cx, cy, Math.min(source.width, source.height) / 2, ACCENT_SPARK, 0.85)
-    .setStrokeStyle(4, INK, 1)
-    .setDepth(1);
-  scene.tweens.add({
-    targets: dot,
-    alpha: 0.35,
-    duration: 260,
-    yoyo: true,
-    repeat: -1,
-    ease: "Sine.easeInOut",
-  });
+  sparkEmitter(scene, source.x + source.width / 2, source.y + source.height / 2).setDepth(1);
 }
 
 export function setElectrified(
   scene: Phaser.Scene,
   body: Phaser.GameObjects.Image,
-  ink: Phaser.GameObjects.Image,
-  baseColor: number,
   charged: boolean,
 ) {
   if (charged === (body.getData("charged") ?? false)) return;
   body.setData("charged", charged);
-  scene.tweens.killTweensOf([body, ink]);
+  let emitter = body.getData("sparks") as Phaser.GameObjects.Particles.ParticleEmitter | undefined;
   if (!charged) {
-    body.setScale(1).setTint(baseColor);
-    ink.setScale(1);
+    emitter?.stop();
     return;
   }
-  scene.tweens.add({
-    targets: [body, ink],
-    scaleX: 1.15,
-    scaleY: 0.88,
-    duration: 60 + Math.random() * 40,
-    yoyo: true,
-    repeat: -1,
-    ease: "Sine.easeInOut",
-    onUpdate: () => body.setTint(Math.random() < 0.5 ? ACCENT_SPARK : baseColor),
-  });
+  if (!emitter) {
+    emitter = sparkEmitter(scene, body.x, body.y).setDepth(9).startFollow(body);
+    body.setData("sparks", emitter);
+  }
+  emitter.start();
 }
