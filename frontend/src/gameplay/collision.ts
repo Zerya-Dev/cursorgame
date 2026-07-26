@@ -2,7 +2,6 @@ import Phaser from "phaser";
 import { moveCircle } from "@shared";
 import type { Rect } from "@shared";
 
-/** Cursor movement uses the same shared collision code as simulated entities. */
 export function moveAndCollide(
   cursor: { x: number; y: number },
   velocity: Phaser.Math.Vector2,

@@ -4,6 +4,7 @@ import {
   BUTTON,
   COLOR_STATIONS,
   CHEESE,
+  ELECTRIC_SOURCE,
   END_CREDITS_GITHUB,
   GITHUB_URL,
   LAVA_ZONES,
@@ -42,6 +43,7 @@ import {
 import type { MovingWallRuntime } from "../gameplay/lava";
 import { SLIDE_DEFAULT_SPEED, SLIDE_MAX_MS, buildSlides, findSlide } from "../gameplay/slide";
 import { buildWorldTexts } from "../gameplay/worldText";
+import { buildElectricSource, setElectrified } from "../gameplay/electric";
 import { FONT_HAND, INK_SOFT_CSS } from "../gameplay/palette";
 import { RenderPlayers } from "../gameplay/renderPlayers";
 import { SprayLayer } from "../gameplay/spray";
@@ -113,6 +115,7 @@ export class GameScene extends Phaser.Scene {
     this.movingWalls = buildMovingLavaWalls(this, MOVING_LAVA_WALLS);
     buildSlides(this, 1);
     buildWorldTexts(this, WORLD_TEXTS);
+    buildElectricSource(this, ELECTRIC_SOURCE);
     this.button = buildButton(this);
     this.renderPlayers = new RenderPlayers(this);
 
@@ -445,6 +448,7 @@ export class GameScene extends Phaser.Scene {
 
   private syncState(state: RoomState, localSessionId: string) {
     this.renderPlayers.sync(state, localSessionId);
+    setElectrified(this, this.cursor, state.players.get(localSessionId)?.charged ?? false);
 
     state.doors.forEach((door, id) => {
       const runtime = this.doors.find(({ def }) => def.id === id);

@@ -19,17 +19,13 @@ function parseColor(color: string) {
   return Number.isFinite(parsed) ? parsed : 0xffffff;
 }
 
-/**
- * Client-side prediction with the shared physics: local hits react instantly,
- * while a "ghost" body (hard-set to each server snapshot, then advanced by the
- * same physics without local input) is what the prediction reconciles against.
- */
 export class BallView implements EntityView {
   readonly radius: number;
   private config: EntityKindConfig;
   private predicted: CircleBody;
   private ghost: CircleBody;
   private container: Phaser.GameObjects.Container;
+
   private body: Phaser.GameObjects.Arc;
   private fillColor: number;
 
@@ -40,8 +36,6 @@ export class BallView implements EntityView {
     this.ghost = { ...this.predicted };
 
     this.fillColor = parseColor(state.color);
-    // A colour disc under the ink barrel: the pack art is black linework, and
-    // setTint multiplies, so tinting the sprite itself would do nothing.
     this.body = scene.add.circle(0, 0, state.radius * 0.82, this.fillColor, 0.85);
     const barrel = scene.add
       .image(0, 0, "barrel")

@@ -3,14 +3,10 @@ import { SLIDES, circleOverlapsRect } from "@shared";
 import type { Slide } from "@shared";
 import { INK, PAPER } from "./palette";
 
-/** fallback ride speed when a slide doesn't specify one, in world px/sec */
 export const SLIDE_DEFAULT_SPEED = 900;
-/** hard stop so a badly placed chute can never trap a player forever */
 export const SLIDE_MAX_MS = 8000;
 
-/** inner width of the chute, in world px */
 const CHUTE = 54;
-/** ink weight of the chute walls */
 const CHUTE_WALL = 9;
 
 export function findSlide(
@@ -21,12 +17,6 @@ export function findSlide(
   return slides.find((slide) => circleOverlapsRect(cursor.x, cursor.y, radius, slide.entry));
 }
 
-/**
- * Draws each chute as a tube: a thick ink stroke with a paper stroke laid over
- * it, so what shows is two hand-drawn walls with floor between them. Joints get
- * a disc each because Phaser's Graphics strokes use mitre joins, which spike
- * badly at the bends.
- */
 export function buildSlides(scene: Phaser.Scene, depth: number) {
   for (const slide of SLIDES) {
     const points = slide.path;
@@ -48,7 +38,6 @@ export function buildSlides(scene: Phaser.Scene, depth: number) {
       floor.fillCircle(p.x, p.y, CHUTE / 2);
     }
 
-    // the mouth, so it's obvious where you get on
     const { entry } = slide;
     scene.add
       .rectangle(

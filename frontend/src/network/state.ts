@@ -5,6 +5,7 @@ export interface Player {
   color: string;
   x: number;
   y: number;
+  charged: boolean;
 }
 
 export interface DoorState {

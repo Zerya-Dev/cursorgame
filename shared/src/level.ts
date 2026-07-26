@@ -24,6 +24,8 @@ export interface PlateFilter {
   entityKind?: string;
   /** occupant's color must match (case-insensitive) */
   color?: string;
+  /** occupant must be carrying an electric charge */
+  charged?: boolean;
 }
 
 export type PlateCountRule =
@@ -363,7 +365,7 @@ export const DOORS: Door[] = [
     width: T,
     height: ROOM_GAP_HEIGHT,
     id: "practice",
-    plateGroups: [["plate-practice-1", "plate-practice-2"]],
+    plateGroups: [["plate-practice-1", "plate-practice-2"], ["plate-electric-target"]],
   },
 ];
 
@@ -536,10 +538,23 @@ export const PLATES: PressurePlate[] = [
     doorIds: ["practice"],
     count: { mode: "atLeast", value: 1 },
   },
+  {
+    id: "plate-electric-target",
+    x: 1150,
+    y: 9420,
+    width: 100,
+    height: 100,
+    doorIds: ["practice"],
+    filter: { entityKind: "player", charged: true },
+  },
 ];
 
 export const TRASH_PLATE_ID = "plate-trash";
 export const TRASH_DOOR_ID = "2";
+
+export const ELECTRIC_SOURCE: Rect = { x: 650, y: 9420, width: 90, height: 90 };
+/** how close two players' centers must be to conduct a charge between them */
+export const ELECTRIC_LINK_RANGE = 70;
 
 export const DOOR_RECTS: Record<string, Rect> = Object.fromEntries(
   DOORS.map((door) => [door.id, door]),

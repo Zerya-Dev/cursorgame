@@ -11,10 +11,6 @@ interface SprayBlob {
 const FADE_MS = 6000;
 const BASE_ALPHA = 0.55;
 
-/**
- * Graffiti-can style ground paint: dots are added while spraying and
- * redrawn every frame with alpha fading out by age, then dropped.
- */
 export class SprayLayer {
   private readonly graphics: Phaser.GameObjects.Graphics;
   private readonly blobs: SprayBlob[] = [];
