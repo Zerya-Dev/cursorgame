@@ -11,6 +11,8 @@ import {
   COLOR_STATIONS,
   DOOR_IDS,
   DOORS,
+  ELECTRIC_LINK_RANGE,
+  ELECTRIC_SOURCE,
   PLATES,
   PLAYER_RADIUS,
   SPAWN_POINT,
@@ -201,14 +203,37 @@ export class MainRoom extends Room {
     const occupants: PlateOccupant[] = [];
     for (const player of this.state.players.values()) {
       if (this.playerOverlaps(player, definition)) {
-        occupants.push({ entityKind: "player", color: player.color });
+        occupants.push({ entityKind: "player", color: player.color, charged: player.charged });
       }
     }
     occupants.push(...this.world.occupantsInRect(definition));
     return occupants;
   }
 
+  private updateElectricity() {
+    const players = [...this.state.players.values()];
+    const charged = new Set<Player>();
+    for (const player of players) {
+      if (this.playerOverlaps(player, ELECTRIC_SOURCE)) charged.add(player);
+    }
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const a of players) {
+        if (!charged.has(a)) continue;
+        for (const b of players) {
+          if (charged.has(b) || a === b) continue;
+          if (Math.hypot(a.x - b.x, a.y - b.y) <= ELECTRIC_LINK_RANGE) {
+            charged.add(b);
+            grew = true;
+          }
+        }
+      }
+    }
+    for (const player of players) player.charged = charged.has(player);
+  }
+
   private updateGameplay() {
+    this.updateElectricity();
     const now = Date.now();
     const totalPlayers = this.state.players.size;
 
