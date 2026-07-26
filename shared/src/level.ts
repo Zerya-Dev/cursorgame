@@ -4,7 +4,6 @@ export const WORLD_WIDTH = 2000;
 export const WORLD_TOP = -600;
 export const LOBBY_HEIGHT = 2150;
 export const CORRIDOR_WIDTH = 320;
-// Increased to 8620 to fit the 6000px moving room + the 750px expanded maze
 export const CORRIDOR_HEIGHT = 8620;
 export const WORLD_HEIGHT = LOBBY_HEIGHT + CORRIDOR_HEIGHT;
 
@@ -90,7 +89,7 @@ const CORRIDOR_RIGHT = CORRIDOR_LEFT + CORRIDOR_WIDTH;
 
 const CHEESE_LANDING = 110;
 
-const MOVING_ROOM_HEIGHT = 6000;
+const MOVING_ROOM_HEIGHT = 4200;
 const MOVING_ROOM_LANES = 50;
 const MOVING_ROOM_LANE_HEIGHT = MOVING_ROOM_HEIGHT / MOVING_ROOM_LANES;
 const MOVING_WALL_HEIGHT = 36;
@@ -105,19 +104,29 @@ const MOVING_ROOM_ENTRANCE = { x: WORLD_WIDTH / 2, y: MOVING_ROOM_BOTTOM - 40 };
 
 const MOVING_ROOM_STUB_BELOW = 130; // corridor between the maze and this room
 
-// RESTORED: Expanded 1600px Maze
-const MAZE_WIDTH = 1600;
+// Four large sectors, separated by doors that have to be held by another player.
+const MAZE_WIDTH = 1840;
 const MAZE_LEFT = (WORLD_WIDTH - MAZE_WIDTH) / 2;
 const MAZE_RIGHT = MAZE_LEFT + MAZE_WIDTH;
 const MAZE_COLS = 8;
-const MAZE_ROWS = 10;
+const MAZE_ROWS = 16;
+const MAZE_SECTOR_ROWS = 4;
 const MAZE_CELL_WIDTH = MAZE_WIDTH / MAZE_COLS;
-const MAZE_CELL_HEIGHT = 75;
+const MAZE_CELL_HEIGHT = 150;
 const MAZE_WALL_THICKNESS = 24;
 const MAZE_SEED = 1337;
 
 const MAZE_TOP = MOVING_ROOM_BOTTOM + MOVING_ROOM_STUB_BELOW;
 const MAZE_BOTTOM = MAZE_TOP + MAZE_ROWS * MAZE_CELL_HEIGHT;
+const MAZE_GATE_THICKNESS = 30;
+const MAZE_GATE_WIDTH = MAZE_CELL_WIDTH;
+const MAZE_GATE_A_Y = MAZE_TOP + MAZE_SECTOR_ROWS * MAZE_CELL_HEIGHT;
+const MAZE_GATE_B_Y = MAZE_TOP + MAZE_SECTOR_ROWS * 2 * MAZE_CELL_HEIGHT;
+const MAZE_GATE_C_Y = MAZE_TOP + MAZE_SECTOR_ROWS * 3 * MAZE_CELL_HEIGHT;
+const MAZE_GATE_A_X = MAZE_LEFT + MAZE_CELL_WIDTH * 2;
+const MAZE_GATE_B_X = MAZE_LEFT + MAZE_CELL_WIDTH * 6;
+const MAZE_GATE_C_X = MAZE_LEFT + MAZE_CELL_WIDTH * 3;
+const MAZE_EXIT_X = MAZE_LEFT + MAZE_CELL_WIDTH * 4;
 const MAZE_ENTRANCE = {
   x: MAZE_LEFT + (Math.floor(MAZE_COLS / 2) + 0.5) * MAZE_CELL_WIDTH,
   y: MAZE_BOTTOM - MAZE_CELL_HEIGHT / 2,
@@ -195,13 +204,48 @@ export const OBSTACLES: Obstacle[] = [
     height: MAZE_TOP - MOVING_ROOM_BOTTOM,
   },
 
-  // The lava maze's own side walls, perfectly capping the 1600px width
+  // The lava maze's own side walls, nearly spanning the full page.
   { x: T, y: MAZE_TOP, width: MAZE_LEFT - T, height: MAZE_BOTTOM - MAZE_TOP },
   {
     x: MAZE_RIGHT,
     y: MAZE_TOP,
     width: WORLD_WIDTH - T - MAZE_RIGHT,
     height: MAZE_BOTTOM - MAZE_TOP,
+  },
+
+  // Sector dividers leave one cell-wide opening occupied by a synchronized door.
+  { x: MAZE_LEFT, y: MAZE_GATE_A_Y, width: MAZE_GATE_A_X - MAZE_LEFT, height: MAZE_GATE_THICKNESS },
+  {
+    x: MAZE_GATE_A_X + MAZE_GATE_WIDTH,
+    y: MAZE_GATE_A_Y,
+    width: MAZE_RIGHT - MAZE_GATE_A_X - MAZE_GATE_WIDTH,
+    height: MAZE_GATE_THICKNESS,
+  },
+  { x: MAZE_LEFT, y: MAZE_GATE_B_Y, width: MAZE_GATE_B_X - MAZE_LEFT, height: MAZE_GATE_THICKNESS },
+  {
+    x: MAZE_GATE_B_X + MAZE_GATE_WIDTH,
+    y: MAZE_GATE_B_Y,
+    width: MAZE_RIGHT - MAZE_GATE_B_X - MAZE_GATE_WIDTH,
+    height: MAZE_GATE_THICKNESS,
+  },
+  {
+    x: MAZE_LEFT,
+    y: MAZE_GATE_C_Y,
+    width: MAZE_GATE_C_X - MAZE_LEFT,
+    height: MAZE_GATE_THICKNESS,
+  },
+  {
+    x: MAZE_GATE_C_X + MAZE_GATE_WIDTH,
+    y: MAZE_GATE_C_Y,
+    width: MAZE_RIGHT - MAZE_GATE_C_X - MAZE_GATE_WIDTH,
+    height: MAZE_GATE_THICKNESS,
+  },
+  { x: MAZE_LEFT, y: MAZE_TOP, width: MAZE_EXIT_X - MAZE_LEFT, height: MAZE_GATE_THICKNESS },
+  {
+    x: MAZE_EXIT_X + MAZE_GATE_WIDTH,
+    y: MAZE_TOP,
+    width: MAZE_RIGHT - MAZE_EXIT_X - MAZE_GATE_WIDTH,
+    height: MAZE_GATE_THICKNESS,
   },
 
   { x: T, y: MAZE_BOTTOM, width: CORRIDOR_LEFT - T, height: ROOM_TOP - MAZE_BOTTOM },
@@ -256,6 +300,38 @@ export const OBSTACLES: Obstacle[] = [
 ];
 
 export const DOORS: Door[] = [
+  {
+    x: MAZE_GATE_A_X,
+    y: MAZE_GATE_A_Y,
+    width: MAZE_GATE_WIDTH,
+    height: MAZE_GATE_THICKNESS,
+    id: "maze-a",
+    plateGroups: [["plate-maze-a-south"], ["plate-maze-a-north"]],
+  },
+  {
+    x: MAZE_GATE_B_X,
+    y: MAZE_GATE_B_Y,
+    width: MAZE_GATE_WIDTH,
+    height: MAZE_GATE_THICKNESS,
+    id: "maze-b",
+    plateGroups: [["plate-maze-b-south"], ["plate-maze-b-north"]],
+  },
+  {
+    x: MAZE_GATE_C_X,
+    y: MAZE_GATE_C_Y,
+    width: MAZE_GATE_WIDTH,
+    height: MAZE_GATE_THICKNESS,
+    id: "maze-c",
+    plateGroups: [["plate-maze-c-south"], ["plate-maze-c-north"]],
+  },
+  {
+    x: MAZE_EXIT_X,
+    y: MAZE_TOP,
+    width: MAZE_GATE_WIDTH,
+    height: MAZE_GATE_THICKNESS,
+    id: "maze-exit",
+    plateGroups: [["plate-maze-exit-ball"]],
+  },
   { x: CORRIDOR_LEFT, y: DOOR2_Y, width: CORRIDOR_WIDTH, height: 30, id: "2", permanent: true },
   {
     x: CORRIDOR_LEFT,
@@ -292,6 +368,76 @@ export const DOORS: Door[] = [
 ];
 
 export const PLATES: PressurePlate[] = [
+  {
+    id: "plate-maze-c-south",
+    x: MAZE_RIGHT - 150,
+    y: MAZE_GATE_C_Y + 70,
+    width: 100,
+    height: 90,
+    doorIds: ["maze-c"],
+    filter: { entityKind: "player" },
+    label: "C SOUTH",
+  },
+  {
+    id: "plate-maze-c-north",
+    x: MAZE_RIGHT - 150,
+    y: MAZE_GATE_C_Y - 160,
+    width: 100,
+    height: 90,
+    doorIds: ["maze-c"],
+    filter: { entityKind: "player" },
+    label: "C NORTH",
+  },
+  {
+    id: "plate-maze-a-south",
+    x: MAZE_RIGHT - 150,
+    y: MAZE_GATE_A_Y + 55,
+    width: 100,
+    height: 90,
+    doorIds: ["maze-a"],
+    filter: { entityKind: "player" },
+    label: "A SOUTH",
+  },
+  {
+    id: "plate-maze-a-north",
+    x: MAZE_RIGHT - 150,
+    y: MAZE_GATE_A_Y - 145,
+    width: 100,
+    height: 90,
+    doorIds: ["maze-a"],
+    filter: { entityKind: "player" },
+    label: "A NORTH",
+  },
+  {
+    id: "plate-maze-b-south",
+    x: MAZE_LEFT + 50,
+    y: MAZE_GATE_B_Y + 55,
+    width: 100,
+    height: 90,
+    doorIds: ["maze-b"],
+    filter: { entityKind: "player" },
+    label: "B SOUTH",
+  },
+  {
+    id: "plate-maze-b-north",
+    x: MAZE_LEFT + 50,
+    y: MAZE_GATE_B_Y - 145,
+    width: 100,
+    height: 90,
+    doorIds: ["maze-b"],
+    filter: { entityKind: "player" },
+    label: "B NORTH",
+  },
+  {
+    id: "plate-maze-exit-ball",
+    x: MAZE_RIGHT - 160,
+    y: MAZE_TOP + 65,
+    width: 110,
+    height: 100,
+    doorIds: ["maze-exit"],
+    filter: { entityKind: "ball" },
+    label: "BALL",
+  },
   {
     id: "plate-trash",
     x: 120,
@@ -452,31 +598,34 @@ function carveMaze(cols: number, rows: number, seed: number) {
 }
 
 function buildMazeLavaZones(): LavaZone[] {
-  const { hWalls, vWalls } = carveMaze(MAZE_COLS, MAZE_ROWS, MAZE_SEED);
   const zones: LavaZone[] = [];
 
-  for (let r = 0; r < MAZE_ROWS - 1; r++) {
-    for (let c = 0; c < MAZE_COLS; c++) {
-      if (!hWalls[r][c]) continue;
-      zones.push({
-        x: MAZE_LEFT + c * MAZE_CELL_WIDTH,
-        y: MAZE_TOP + (r + 1) * MAZE_CELL_HEIGHT - MAZE_WALL_THICKNESS / 2,
-        width: MAZE_CELL_WIDTH,
-        height: MAZE_WALL_THICKNESS,
-        teleportTo: MAZE_ENTRANCE,
-      });
+  for (let sector = 0; sector < MAZE_ROWS / MAZE_SECTOR_ROWS; sector++) {
+    const { hWalls, vWalls } = carveMaze(MAZE_COLS, MAZE_SECTOR_ROWS, MAZE_SEED + sector * 101);
+    const rowOffset = sector * MAZE_SECTOR_ROWS;
+    for (let r = 0; r < MAZE_SECTOR_ROWS - 1; r++) {
+      for (let c = 0; c < MAZE_COLS; c++) {
+        if (!hWalls[r][c]) continue;
+        zones.push({
+          x: MAZE_LEFT + c * MAZE_CELL_WIDTH,
+          y: MAZE_TOP + (rowOffset + r + 1) * MAZE_CELL_HEIGHT - MAZE_WALL_THICKNESS / 2,
+          width: MAZE_CELL_WIDTH,
+          height: MAZE_WALL_THICKNESS,
+          teleportTo: MAZE_ENTRANCE,
+        });
+      }
     }
-  }
-  for (let r = 0; r < MAZE_ROWS; r++) {
-    for (let c = 0; c < MAZE_COLS - 1; c++) {
-      if (!vWalls[r][c]) continue;
-      zones.push({
-        x: MAZE_LEFT + (c + 1) * MAZE_CELL_WIDTH - MAZE_WALL_THICKNESS / 2,
-        y: MAZE_TOP + r * MAZE_CELL_HEIGHT,
-        width: MAZE_WALL_THICKNESS,
-        height: MAZE_CELL_HEIGHT,
-        teleportTo: MAZE_ENTRANCE,
-      });
+    for (let r = 0; r < MAZE_SECTOR_ROWS; r++) {
+      for (let c = 0; c < MAZE_COLS - 1; c++) {
+        if (!vWalls[r][c]) continue;
+        zones.push({
+          x: MAZE_LEFT + (c + 1) * MAZE_CELL_WIDTH - MAZE_WALL_THICKNESS / 2,
+          y: MAZE_TOP + (rowOffset + r) * MAZE_CELL_HEIGHT,
+          width: MAZE_WALL_THICKNESS,
+          height: MAZE_CELL_HEIGHT,
+          teleportTo: MAZE_ENTRANCE,
+        });
+      }
     }
   }
   return zones;
@@ -590,6 +739,17 @@ export const WORLD_TEXTS: WorldText[] = [
     rotation: 1,
   },
   { x: 1000, y: 8690, text: "the cheese is a lie.", size: 48, rotation: -2 },
+  {
+    x: 1000,
+    y: MAZE_BOTTOM - 55,
+    text: "SECTOR D  /  find the marked ball",
+    size: 25,
+    rotation: -1,
+  },
+  { x: MAZE_GATE_C_X + MAZE_GATE_WIDTH / 2, y: MAZE_GATE_C_Y + 52, text: "GATE C", size: 23 },
+  { x: MAZE_GATE_B_X + 100, y: MAZE_GATE_B_Y + 52, text: "GATE B", size: 23, rotation: 1 },
+  { x: MAZE_GATE_A_X + 100, y: MAZE_GATE_A_Y + 52, text: "GATE A", size: 23, rotation: -1 },
+  { x: 1000, y: MAZE_TOP + 210, text: "EXIT LOCK: bring the ball from sector D", size: 25 },
   { x: 1120, y: 9920, text: "look! a droga szybkiego ruchu!", size: 24, rotation: 2 },
   { x: 270, y: 9920, text: "try using the right button", size: 24, rotation: 2 },
   { x: 270, y: 8820, text: "pick a colour", size: 28, rotation: -3 },
@@ -690,4 +850,12 @@ export const ENTITY_KINDS: Record<string, EntityKindConfig> = {
 
 export const ENTITIES: EntityDef[] = [
   { kind: "ball", id: "ball-main", x: 1000, y: 9770, radius: 46, color: "#e0e0e0" },
+  {
+    kind: "ball",
+    id: "ball-maze-key",
+    x: MAZE_LEFT + MAZE_CELL_WIDTH / 2,
+    y: MAZE_BOTTOM - MAZE_CELL_HEIGHT / 2,
+    radius: 42,
+    color: "#e5b83f",
+  },
 ];

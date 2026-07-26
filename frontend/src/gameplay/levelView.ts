@@ -460,6 +460,17 @@ export function buildInteractables(scene: Phaser.Scene) {
       .setStrokeStyle(5, INK, 1)
       .setDepth(2);
 
+    if (def.label) {
+      scene.add
+        .text(cx, def.y + 8, def.label, {
+          fontFamily: FONT_HAND,
+          fontSize: `${Math.min(18, Math.round(def.width / Math.max(5, def.label.length)))}px`,
+          color: INK_CSS,
+        })
+        .setOrigin(0.5, 0)
+        .setDepth(3);
+    }
+
     const iconSize = Math.min(def.width, def.height) * 0.3;
     const rowY = def.y + def.height - iconSize * 0.75;
     const iconKey = plateIcon(def.filter?.entityKind);
