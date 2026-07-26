@@ -2,32 +2,43 @@ import Phaser from "phaser";
 import type { Rect } from "@shared";
 import { ACCENT_SPARK } from "./palette";
 
-function sparkTexture(scene: Phaser.Scene) {
-  if (!scene.textures.exists("sparkDot")) {
-    scene.add
-      .graphics()
-      .fillStyle(0xffffff)
-      .fillCircle(2, 2, 2)
-      .generateTexture("sparkDot", 4, 4)
-      .destroy();
+function drawBolt(scene: Phaser.Scene, x: number, y: number) {
+  const angle =
+    (Math.random() < 0.5 ? -1 : 1) * (Math.PI / 2) + Phaser.Math.FloatBetween(-0.5, 0.5);
+  const length = Phaser.Math.Between(18, 32);
+  const segments = 4;
+  const bolt = scene.add.graphics().setPosition(x, y).setDepth(20).lineStyle(3, ACCENT_SPARK, 1);
+  bolt.beginPath();
+  bolt.moveTo(0, 0);
+  for (let i = 1; i <= segments; i++) {
+    const along = (length * i) / segments;
+    const across = i === segments ? 0 : Phaser.Math.Between(-7, 7);
+    bolt.lineTo(
+      Math.cos(angle) * along - Math.sin(angle) * across,
+      Math.sin(angle) * along + Math.cos(angle) * across,
+    );
   }
-  return "sparkDot";
+  bolt.strokePath();
+  scene.tweens.add({ targets: bolt, alpha: 0, duration: 160, onComplete: () => bolt.destroy() });
 }
 
-function sparkEmitter(scene: Phaser.Scene, x: number, y: number) {
-  return scene.add.particles(x, y, sparkTexture(scene), {
-    tint: ACCENT_SPARK,
-    blendMode: "ADD",
-    speed: { min: 30, max: 90 },
-    lifespan: { min: 150, max: 320 },
-    scale: { start: 1.6, end: 0 },
-    quantity: 1,
-    frequency: 25,
+function sparkLoop(scene: Phaser.Scene, getPos: () => { x: number; y: number } | null) {
+  const timer = scene.time.addEvent({
+    delay: 70,
+    loop: true,
+    callback: () => {
+      const pos = getPos();
+      if (!pos) return timer.remove();
+      drawBolt(scene, pos.x, pos.y);
+    },
   });
+  return timer;
 }
 
 export function buildElectricSource(scene: Phaser.Scene, source: Rect) {
-  sparkEmitter(scene, source.x + source.width / 2, source.y + source.height / 2).setDepth(1);
+  const cx = source.x + source.width / 2;
+  const cy = source.y + source.height / 2;
+  sparkLoop(scene, () => ({ x: cx, y: cy }));
 }
 
 export function setElectrified(
@@ -37,14 +48,12 @@ export function setElectrified(
 ) {
   if (charged === (body.getData("charged") ?? false)) return;
   body.setData("charged", charged);
-  let emitter = body.getData("sparks") as Phaser.GameObjects.Particles.ParticleEmitter | undefined;
   if (!charged) {
-    emitter?.stop();
+    (body.getData("sparks") as Phaser.Time.TimerEvent | undefined)?.remove();
     return;
   }
-  if (!emitter) {
-    emitter = sparkEmitter(scene, body.x, body.y).setDepth(9).startFollow(body);
-    body.setData("sparks", emitter);
-  }
-  emitter.start();
+  body.setData(
+    "sparks",
+    sparkLoop(scene, () => (body.isDestroyed ? null : { x: body.x, y: body.y })),
+  );
 }

@@ -2,7 +2,6 @@ import Phaser from "phaser";
 import type { WorldText } from "@shared";
 import { FONT_HAND, INK_CSS } from "./palette";
 
-/** signs scribbled on the dungeon floor */
 export function buildWorldTexts(scene: Phaser.Scene, texts: WorldText[]) {
   for (const t of texts) {
     scene.add
@@ -12,7 +11,6 @@ export function buildWorldTexts(scene: Phaser.Scene, texts: WorldText[]) {
         color: INK_CSS,
       })
       .setOrigin(0.5)
-      // a few degrees off true so it reads as written by hand, not typeset
       .setRotation(Phaser.Math.DegToRad(t.rotation ?? -2))
       .setDepth(2);
   }

@@ -1,17 +1,7 @@
-/**
- * Ink-on-paper palette for the Kenney Scribble Dungeons look.
- *
- * The pack is black linework on transparency, drawn for a light background, so
- * everything here assumes paper underneath. Note that Phaser's setTint
- * multiplies: tinting a pack sprite does nothing (black x colour = black).
- * Colour is expressed with shapes drawn *under* the ink instead.
- */
-
-/** page colour — everything sits on this */
+// ITS COLOR NOT COLOUR
 export const PAPER = 0xf4efe3;
 export const PAPER_CSS = "#f4efe3";
 
-/** the pen */
 export const INK = 0x1a1a1a;
 export const INK_CSS = "#1a1a1a";
 
@@ -24,7 +14,7 @@ export const ACCENT_ACTIVE_CSS = "#5bbf6a";
 export const ACCENT_IDLE = 0xd9a441;
 export const ACCENT_IDLE_CSS = "#d9a441";
 
-export const ACCENT_GOAL = 0xf2c14e;
+export const ACCENT_GOAL = 0xf2c14e; // css for formating
 export const ACCENT_GOAL_CSS = "#f2c14e";
 
 export const ACCENT_DANGER = 0xc4553f;

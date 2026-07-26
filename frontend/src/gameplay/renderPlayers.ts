@@ -12,9 +12,7 @@ interface RemotePlayer {
   heading: number;
 }
 
-/** below which per-frame travel is treated as jitter rather than a new heading */
-const TURN_EPSILON = 0.5;
-
+const TURN_EPSILON = 0.5; // physics
 const INTERPOLATION_RATE = 14;
 const SNAP_DISTANCE = 400;
 
@@ -82,8 +80,6 @@ export class RenderPlayers {
         remote.cursor.y = Phaser.Math.Linear(remote.cursor.y, remote.target.y, interpolation);
       }
 
-      // Remote peers only send position, so face them along the direction they
-      // actually travelled this frame; hold the last heading while idle.
       const dx = remote.cursor.x - fromX;
       const dy = remote.cursor.y - fromY;
       if (Math.hypot(dx, dy) > TURN_EPSILON) {

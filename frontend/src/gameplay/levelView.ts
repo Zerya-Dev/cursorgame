@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { WORLD_HEIGHT, WORLD_WIDTH } from "../config";
+import { WORLD_HEIGHT, WORLD_WIDTH } from "@shared";
 import {
   BALL_SPAWN_COUNT,
   BUTTON,
@@ -31,7 +31,6 @@ import {
   PAPER,
 } from "./palette";
 
-/** texture that shows what is allowed to stand on a plate, or undefined if it takes anything */
 function plateIcon(entityKind?: string): string | undefined {
   if (!entityKind) return undefined; // no filter -- anything counts, so no icon to show
   if (entityKind === "ball" || entityKind === "boulder") return "barrel";
@@ -42,9 +41,7 @@ export interface DoorRuntime {
   def: Door;
   solid: boolean;
   open: boolean;
-  /** two leaves that part from the centre; each retracts into its own jamb */
   leaves: [Phaser.GameObjects.Image, Phaser.GameObjects.Image];
-  /** which screen axis the leaves slide along — doors can sit in either wall */
   axis: "x" | "y";
   closedPos: [number, number];
   openPos: [number, number];
@@ -65,10 +62,8 @@ export function animateDoor(scene: Phaser.Scene, runtime: DoorRuntime, opening: 
 export interface PlateRuntime {
   def: PressurePlate;
   active: boolean;
-  /** colour wash under the ink, since tinting the pack art would be a no-op */
   glow: Phaser.GameObjects.Rectangle;
   plate: Phaser.GameObjects.Rectangle;
-  /** absent when the plate has no entityKind filter, i.e. anything counts */
   icon?: Phaser.GameObjects.Image;
   countLabel: Phaser.GameObjects.Text;
   progress?: {
@@ -85,8 +80,6 @@ export function updateCollectorProgress(runtime: PlateRuntime, remaining: number
 }
 
 export function animatePlate(scene: Phaser.Scene, runtime: PlateRuntime, active: boolean) {
-  // idle plates stay empty so you can see what is standing on them. The glow
-  // (highlight) and icon are left alone here -- only the outline pulses.
   runtime.glow.setFillStyle(active ? ACCENT_ACTIVE : ACCENT_IDLE, active ? 0.5 : 0);
   runtime.countLabel.setColor(active ? ACCENT_ACTIVE_CSS : INK_SOFT_CSS);
 
@@ -177,17 +170,9 @@ export function updateButtonView(
   runtime.rect.setFillStyle(fill, 1);
 }
 
-/** world px covered by one floor cell (floor_cell.png is 64x64) */
 const FLOOR_TILE = 72;
-/** thickness of a stamped wall line, in world px */
 const WALL_INK = 22;
-/**
- * How finely an obstacle edge is probed for "is the neighbour solid here?".
- * Runs snap to this grid, so a coarse value leaves visible notches where two
- * walls meet -- keep it well under the wall weight.
- */
 const EDGE_PROBE = 6;
-/** slabs at or under this thickness are drawn as a single centred line */
 const THIN_WALL = WALL_INK * 2.2;
 
 const DEPTH_FLOOR = -10;
@@ -203,17 +188,11 @@ function isSolidAt(x: number, y: number, skip: Rect) {
   return false;
 }
 
-/**
- * Runs along one edge of `rect`, returning the [from, to] spans that face open
- * floor. Spans buried inside a neighbouring obstacle are dropped so we never
- * draw a wall line through the middle of a solid mass.
- */
 function exposedSpans(rect: Rect, side: "top" | "bottom" | "left" | "right") {
   const vertical = side === "left" || side === "right";
   const start = vertical ? rect.y : rect.x;
   const end = start + (vertical ? rect.height : rect.width);
 
-  // a point just outside this edge, offset along the edge's normal
   const probe = (at: number) => {
     switch (side) {
       case "top":
@@ -232,8 +211,6 @@ function exposedSpans(rect: Rect, side: "top" | "bottom" | "left" | "right") {
 
   for (let at = start; at <= end; at += EDGE_PROBE) {
     const p = probe(Math.min(at, end));
-    // outside the world bounds there is no room to draw into, only blank
-    // page: treat it as solid so we never stamp a wall facing off the map.
     const outOfBounds = p.x < 0 || p.x > WORLD_WIDTH || p.y < WORLD_TOP || p.y > WORLD_HEIGHT;
     const open = !outOfBounds && !isSolidAt(p.x, p.y, rect);
     if (open && runStart === null) runStart = at;
@@ -247,7 +224,6 @@ function exposedSpans(rect: Rect, side: "top" | "bottom" | "left" | "right") {
   return spans.filter(([from, to]) => to - from > EDGE_PROBE / 2);
 }
 
-/** merge two span lists into one, collapsing anything that touches or overlaps */
 function unionSpans(a: Array<[number, number]>, b: Array<[number, number]>) {
   const all = [...a, ...b].sort((p, q) => p[0] - q[0]);
   const merged: Array<[number, number]> = [];
@@ -268,37 +244,20 @@ interface WallSegment {
 
 function stampWall(scene: Phaser.Scene, seg: WallSegment) {
   const { from, to, fixed, vertical } = seg;
-  // Run a full line-weight past each end. Corners are formed by two runs from
-  // *different* obstacle rects, so they only close if both overshoot into the
-  // solid mass behind them.
   const a = from - WALL_INK;
   const b = to + WALL_INK;
   const length = b - a;
   const mid = (a + b) / 2;
 
-  // wall_seam.png (96x48) is wall.png with its drawn end-caps cropped off, so
-  // it tiles into one continuous wobbling ink line instead of a row of closed
-  // boxes. Scale both axes equally to keep the wobble from being squashed.
-  const scale = WALL_INK / 48;
-  // Always lay it out horizontally (length along local x, matching the
-  // texture's own orientation) then rotate 90 for vertical runs -- tileScale
-  // applies in the texture's pre-rotation axes, so swapping width/height
-  // instead of rotating would sample the wrong part of the source.
   const strip = scene.add
     .tileSprite(vertical ? fixed : mid, vertical ? mid : fixed, length, WALL_INK, "wall_seam")
     .setOrigin(0.5)
-    .setTileScale(scale, scale)
+    .setTileScale(WALL_INK / 48, WALL_INK / 48)
     .setDepth(DEPTH_WALL);
 
   if (vertical) strip.setAngle(90);
 }
 
-/**
- * wall_seam is a hollow two-line tube, not a solid stroke -- fine down a
- * straight run, but where a horizontal and a vertical run cross it reads as
- * four lines tangled together instead of a corner. Cap every such crossing
- * with a solid ink blot so it reads as one deliberate joint.
- */
 function stampWallCrossings(scene: Phaser.Scene, segments: WallSegment[]) {
   const horizontals = segments.filter((s) => !s.vertical);
   const verticals = segments.filter((s) => s.vertical);
@@ -318,14 +277,10 @@ function stampWallCrossings(scene: Phaser.Scene, segments: WallSegment[]) {
 }
 
 export function drawLevel(scene: Phaser.Scene) {
-  // The camera may follow the slide south of the dungeon, but only the actual
-  // rooms receive floor tiles. The extended world below remains blank paper.
   scene.add
     .tileSprite(0, 0, WORLD_WIDTH, MAIN_LOBBY_BOTTOM, "floor_cell")
     .setOrigin(0, 0)
     .setTileScale(FLOOR_TILE / 64)
-    // floor_cell.png only carries its top/left border (the right/bottom are
-    // baked out) so adjacent tiles share a single seam instead of doubling it
     .setAlpha(0.85)
     .setDepth(DEPTH_FLOOR);
   scene.add
@@ -335,8 +290,6 @@ export function drawLevel(scene: Phaser.Scene) {
     .setAlpha(0.85)
     .setDepth(DEPTH_FLOOR);
 
-  // Solid mass reads as blank paper: no floor grid "behind" the walls, so the
-  // rooms are what the grid picks out.
   const solid = scene.add.graphics().setDepth(DEPTH_SOLID);
   solid.fillStyle(PAPER, 1);
   for (const o of OBSTACLES) solid.fillRect(o.x, o.y, o.width, o.height);
@@ -378,7 +331,6 @@ export function drawLevel(scene: Phaser.Scene) {
     .setOrigin(0.5)
     .setDepth(DEPTH_DECOR + 1);
 
-  // a slow bob so the goal reads as the one live thing in the room
   scene.tweens.add({
     targets: cheese,
     y: CHEESE.y - 8,
@@ -399,9 +351,6 @@ export function drawLevel(scene: Phaser.Scene) {
   const segments: WallSegment[] = [];
 
   for (const o of OBSTACLES) {
-    // A slab only a couple of line weights thick IS a wall, not a mass with two
-    // faces. Drawing both of its edges leaves a pale gap between them and it
-    // reads as a hollow tube, so thin slabs get one line down the spine.
     if (o.height <= THIN_WALL) {
       const spine = o.y + o.height / 2;
       for (const [from, to] of unionSpans(exposedSpans(o, "top"), exposedSpans(o, "bottom"))) {
@@ -434,10 +383,7 @@ export function drawLevel(scene: Phaser.Scene) {
   for (const seg of segments) stampWall(scene, seg);
   stampWallCrossings(scene, segments);
 
-  // The canvas is 1920x1080 but the world is authored at roughly half that
-  // density, so zoom in to keep objects at a readable on-screen size.
-  // Handy while authoring levels: setZoom(0.35) frames the whole map.
-  scene.cameras.main.setZoom(1.5);
+  scene.cameras.main.setZoom(1.5); // SCALE, ZOOM, SIZE (keywords lol)
 
   return { cheese, githubLink };
 }
@@ -452,8 +398,6 @@ export function buildInteractables(scene: Phaser.Scene) {
       .setOrigin(0.5)
       .setDepth(1);
 
-    // Frame only -- the middle stays empty so you can see what is standing on
-    // it. The requirement is spelled out along the bottom edge instead.
     const plate = scene.add
       .rectangle(cx, cy, def.width, def.height, PAPER, 0)
       .setOrigin(0.5)
@@ -481,7 +425,6 @@ export function buildInteractables(scene: Phaser.Scene) {
       }
     }
 
-    // Without an icon (anything counts) the count reads alone, centred.
     const labelText = def.countLabel ?? plateCountLabel(def.count);
     const labelScale = labelText.length > 3 ? 0.55 : 0.95;
     const countLabel = scene.add
@@ -511,8 +454,6 @@ export function buildInteractables(scene: Phaser.Scene) {
   });
 
   const doors: DoorRuntime[] = DOORS.map((def) => {
-    // A door can sit in a horizontal or a vertical wall; the leaves always part
-    // along the opening, not along a fixed screen axis.
     const vertical = def.height > def.width;
     const axis = vertical ? "y" : "x";
     const span = vertical ? def.height : def.width;
@@ -522,17 +463,12 @@ export function buildInteractables(scene: Phaser.Scene) {
     const cross = vertical ? def.x + def.width / 2 : def.y + def.height / 2;
 
     const closedPos: [number, number] = [start + half / 2, start + half + half / 2];
-    // each leaf retracts a full leaf-length outward, clearing the opening
     const openPos: [number, number] = [closedPos[0] - half, closedPos[1] + half];
 
     const leaves = closedPos.map((pos, i) => {
       const leaf = scene.add
         .image(vertical ? cross : pos, vertical ? pos : cross, "doorLeaf")
         .setOrigin(0.5)
-        // doorLeaf is drawn hinge-left/handle-right, so size it along the
-        // opening first and only then rotate it into a vertical jamb. The
-        // far leaf is mirrored so its hinge lands on its own jamb instead of
-        // both leaves hinging on the same side.
         .setDisplaySize(half, thickness * 1.6)
         .setFlipX(i === 1)
         .setDepth(4);
@@ -547,7 +483,6 @@ export function buildInteractables(scene: Phaser.Scene) {
     const cx = station.x + station.width / 2;
     const cy = station.y + station.height / 2;
 
-    // a rug with a blot of paint on it, rather than a flat swatch
     scene.add
       .image(cx, cy, "carpet")
       .setDisplaySize(station.width * 1.35, station.height * 1.35)
