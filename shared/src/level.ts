@@ -4,8 +4,8 @@ export const WORLD_WIDTH = 2000;
 export const WORLD_TOP = -600;
 export const LOBBY_HEIGHT = 2150;
 export const CORRIDOR_WIDTH = 320;
-// Increased to 8580 to fit the 6000px moving room + the 750px expanded maze
-export const CORRIDOR_HEIGHT = 8580;
+// Increased to 8620 to fit the 6000px moving room + the 750px expanded maze
+export const CORRIDOR_HEIGHT = 8620;
 export const WORLD_HEIGHT = LOBBY_HEIGHT + CORRIDOR_HEIGHT;
 
 export const PLAYER_RADIUS = 12;
@@ -63,8 +63,10 @@ export interface MovingLavaWall {
   gapWidth: number;
   /** where the gap's left edge sits within the assembly, measured from the assembly's own left edge */
   gapOffset: number;
-  /** world px/sec the assembly sweeps right to left */
+  /** world px/sec the assembly sweeps */
   speed: number;
+  /** most lanes sweep right to left; a scattered few go the other way for variety */
+  direction: "rightToLeft" | "leftToRight";
   /** px added before the loop wraps, so lanes don't all move in lockstep */
   startOffset: number;
   teleportTo: { x: number; y: number };
@@ -101,7 +103,7 @@ export const MOVING_WALL_ROOM_LEFT = T;
 export const MOVING_WALL_ROOM_RIGHT = WORLD_WIDTH - T;
 const MOVING_ROOM_ENTRANCE = { x: WORLD_WIDTH / 2, y: MOVING_ROOM_BOTTOM - 40 };
 
-const MOVING_ROOM_STUB_BELOW = 90;
+const MOVING_ROOM_STUB_BELOW = 130; // corridor between the maze and this room
 
 // RESTORED: Expanded 1600px Maze
 const MAZE_WIDTH = 1600;
@@ -141,8 +143,7 @@ export const MAIN_LOBBY_BOTTOM = CORRIDOR_HEIGHT + 1800;
 
 const HALL_LEFT_WALL_X = 500;
 const HALL_RIGHT_WALL_X = 1500;
-// Shifted +480px
-const ROOM_GAP_TOP = 9080;
+const ROOM_GAP_TOP = 9120;
 const ROOM_GAP_HEIGHT = 200;
 const ROOM_GAP_BOTTOM = ROOM_GAP_TOP + ROOM_GAP_HEIGHT;
 
@@ -323,11 +324,10 @@ export const PLATES: PressurePlate[] = [
     count: { mode: "balance", withPlateId: "plate-level1-left" },
   },
 
-  // ALL LOBBY PLATES SHIFTED +480
   {
     id: "plate-gate-1",
     x: 805,
-    y: 8730,
+    y: 8770,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -337,7 +337,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-gate-2",
     x: 955,
-    y: 8730,
+    y: 8770,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -347,7 +347,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-gate-3",
     x: 1105,
-    y: 8730,
+    y: 8770,
     width: 100,
     height: 100,
     doorIds: ["0"],
@@ -357,7 +357,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-colour-inside",
     x: 370,
-    y: 9120,
+    y: 9160,
     width: 100,
     height: 120,
     doorIds: ["colour"],
@@ -366,7 +366,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-colour-outside",
     x: 570,
-    y: 9120,
+    y: 9160,
     width: 100,
     height: 120,
     doorIds: ["colour"],
@@ -375,7 +375,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-practice-1",
     x: 1370,
-    y: 8950,
+    y: 8990,
     width: 110,
     height: 110,
     doorIds: ["practice"],
@@ -384,7 +384,7 @@ export const PLATES: PressurePlate[] = [
   {
     id: "plate-practice-2",
     x: 1370,
-    y: 9300,
+    y: 9340,
     width: 110,
     height: 110,
     doorIds: ["practice"],
@@ -400,14 +400,13 @@ export const DOOR_RECTS: Record<string, Rect> = Object.fromEntries(
 );
 export const DOOR_IDS = DOORS.map((door) => door.id);
 
-// SHIFTED +480
 export const COLOR_STATIONS: ColorStation[] = [
-  { color: "#c4553f", label: "RED", x: 100, y: 8780, width: 70, height: 70 },
-  { color: "#5bbf6a", label: "GREEN", x: 215, y: 8780, width: 70, height: 70 },
-  { color: "#5b8fd9", label: "BLUE", x: 330, y: 8780, width: 70, height: 70 },
-  { color: "#e5b83f", label: "YELLOW", x: 100, y: 8890, width: 70, height: 70 },
-  { color: "#9567c6", label: "PURPLE", x: 215, y: 8890, width: 70, height: 70 },
-  { color: "#8b5a3c", label: "BROWN", x: 330, y: 8890, width: 70, height: 70 },
+  { color: "#c4553f", label: "RED", x: 100, y: 8820, width: 70, height: 70 },
+  { color: "#5bbf6a", label: "GREEN", x: 215, y: 8820, width: 70, height: 70 },
+  { color: "#5b8fd9", label: "BLUE", x: 330, y: 8820, width: 70, height: 70 },
+  { color: "#e5b83f", label: "YELLOW", x: 100, y: 8930, width: 70, height: 70 },
+  { color: "#9567c6", label: "PURPLE", x: 215, y: 8930, width: 70, height: 70 },
+  { color: "#8b5a3c", label: "BROWN", x: 330, y: 8930, width: 70, height: 70 },
 ];
 
 function mulberry32(seed: number): () => number {
@@ -493,7 +492,8 @@ export function movingWallSegments(
 ): Rect[] {
   const cycle = roomRight - roomLeft + wall.wallWidth;
   const traveled = ((nowMs / 1000) * wall.speed + wall.startOffset) % cycle;
-  const left = roomRight - traveled;
+  const left =
+    wall.direction === "leftToRight" ? roomLeft - wall.wallWidth + traveled : roomRight - traveled;
   const gapStart = left + wall.gapOffset;
   const gapEnd = gapStart + wall.gapWidth;
   return [
@@ -524,13 +524,17 @@ export const MOVING_LAVA_WALLS: MovingLavaWall[] = Array.from(
     gapWidth: MOVING_WALL_GAP,
     gapOffset: (i * 337) % MOVING_WALL_MAX_GAP_OFFSET,
     speed: 170 + (i % 5) * 20,
+    // Deterministic, not Math.random() -- every client evaluates this module independently,
+    // so "which lanes run backwards" has to fall out of the lane index the same way on
+    // everyone's machine, or players would see different walls going different directions.
+    // (i * 41) % 9 === 0 scatters roughly 1 in 9 lanes without a visible repeating cadence.
+    direction: (i * 41) % 9 === 0 ? "leftToRight" : "rightToLeft",
     startOffset: (i * 613) % MOVING_WALL_CYCLE,
     teleportTo: MOVING_ROOM_ENTRANCE,
   }),
 );
 
-// SHIFTED +480
-export const FOOTBALL_PITCH: Rect = { x: 90, y: 9400, width: 360, height: 840 };
+export const FOOTBALL_PITCH: Rect = { x: 90, y: 9440, width: 360, height: 840 };
 
 export interface Slide {
   id: string;
@@ -539,28 +543,27 @@ export interface Slide {
   speed?: number;
 }
 
-// ALL PATHS SHIFTED +480
 export const SLIDES: Slide[] = [
   {
     id: "slide-lobby-to-practice",
-    entry: { x: 900, y: 10030, width: 170, height: 170 },
+    entry: { x: 900, y: 10070, width: 170, height: 170 },
     path: [
-      { x: 985, y: 10115 },
-      { x: 1000, y: 10380 },
-      { x: 1090, y: 10560 },
-      { x: 1280, y: 10640 },
-      { x: 1470, y: 10590 },
-      { x: 1570, y: 10450 },
-      { x: 1550, y: 10290 },
-      { x: 1430, y: 10200 },
-      { x: 1280, y: 10210 },
-      { x: 1180, y: 10310 },
-      { x: 1180, y: 10440 },
-      { x: 1270, y: 10520 },
-      { x: 1390, y: 10510 },
-      { x: 1470, y: 10430 },
-      { x: 1590, y: 10320 },
-      { x: 1760, y: 10100 },
+      { x: 985, y: 10155 },
+      { x: 1000, y: 10420 },
+      { x: 1090, y: 10600 },
+      { x: 1280, y: 10680 },
+      { x: 1470, y: 10630 },
+      { x: 1570, y: 10490 },
+      { x: 1550, y: 10330 },
+      { x: 1430, y: 10240 },
+      { x: 1280, y: 10250 },
+      { x: 1180, y: 10350 },
+      { x: 1180, y: 10480 },
+      { x: 1270, y: 10560 },
+      { x: 1390, y: 10550 },
+      { x: 1470, y: 10470 },
+      { x: 1590, y: 10360 },
+      { x: 1760, y: 10140 },
     ],
     speed: 850,
   },
@@ -586,22 +589,22 @@ export const WORLD_TEXTS: WorldText[] = [
     size: 26,
     rotation: 1,
   },
-  { x: 1000, y: 8650, text: "the cheese is a lie.", size: 48, rotation: -2 },
-  { x: 1120, y: 9880, text: "look! a droga szybkiego ruchu!", size: 24, rotation: 2 },
-  { x: 270, y: 9880, text: "try using the right button", size: 24, rotation: 2 },
-  { x: 270, y: 8780, text: "pick a colour", size: 28, rotation: -3 },
+  { x: 1000, y: 8690, text: "the cheese is a lie.", size: 48, rotation: -2 },
+  { x: 1120, y: 9920, text: "look! a droga szybkiego ruchu!", size: 24, rotation: 2 },
+  { x: 270, y: 9920, text: "try using the right button", size: 24, rotation: 2 },
+  { x: 270, y: 8820, text: "pick a colour", size: 28, rotation: -3 },
   {
     x: 1100,
-    y: 9050,
+    y: 9090,
     text: "try the pressure plates here. nothing bad happens.",
     size: 22,
     rotation: 1,
   },
-  { x: 1750, y: 8730, text: "no cheese in here :((", size: 24, rotation: -2 },
-  { x: 1000, y: 9540, text: "you - are - a - mouse", size: 22, rotation: 2 },
+  { x: 1750, y: 8770, text: "no cheese in here :((", size: 24, rotation: -2 },
+  { x: 1000, y: 9580, text: "you - are - a - mouse", size: 22, rotation: 2 },
   {
     x: 1000,
-    y: 9630,
+    y: 9670,
     text: "try to push this around while you wait for others v",
     size: 20,
     rotation: -1,
@@ -616,37 +619,36 @@ export interface DecorDef {
   rotation?: number;
 }
 
-// SHIFTED +480
 export const DECORATIONS: DecorDef[] = [
-  { sprite: "crate", x: 650, y: 8930, size: 70, rotation: 4 },
-  { sprite: "barrels", x: 680, y: 9030, size: 85, rotation: -6 },
-  { sprite: "plants", x: 650, y: 9230, size: 65, rotation: -5 },
-  { sprite: "crate_small", x: 1250, y: 8930, size: 55, rotation: -9 },
-  { sprite: "plants", x: 1260, y: 9080, size: 62, rotation: 8 },
-  { sprite: "table", x: 680, y: 9880, size: 100, rotation: -2 },
-  { sprite: "chair", x: 680, y: 9980, size: 60, rotation: 7 },
-  { sprite: "chest", x: 650, y: 10130, size: 75, rotation: -4 },
-  { sprite: "campfire", x: 1300, y: 9880, size: 95, rotation: 0 },
-  { sprite: "tree", x: 1250, y: 10080, size: 90, rotation: 0 },
-  { sprite: "puddle", x: 1350, y: 10180, size: 110, rotation: 0 },
-  { sprite: "plants", x: 80, y: 8730, size: 60, rotation: -5 },
-  { sprite: "plants", x: 400, y: 8730, size: 60, rotation: 8 },
-  { sprite: "carpet", x: 270, y: 9130, size: 150, rotation: 0 },
-  { sprite: "chest", x: 150, y: 9280, size: 75, rotation: -4 },
-  { sprite: "table", x: 380, y: 9280, size: 95, rotation: 3 },
-  { sprite: "chair", x: 380, y: 9370, size: 55, rotation: 6 },
-  { sprite: "carpet", x: 1750, y: 8780, size: 120, rotation: 0 },
-  { sprite: "crate", x: 1650, y: 8930, size: 70, rotation: 4 },
-  { sprite: "crate_small", x: 1850, y: 8930, size: 55, rotation: -8 },
-  { sprite: "barrel", x: 1700, y: 9130, size: 60, rotation: 3 },
-  { sprite: "table", x: 1850, y: 9180, size: 95, rotation: -2 },
-  { sprite: "chair", x: 1850, y: 9270, size: 55, rotation: 6 },
-  { sprite: "plants", x: 1620, y: 9380, size: 65, rotation: -5 },
-  { sprite: "campfire", x: 1800, y: 9530, size: 90, rotation: 0 },
-  { sprite: "chest", x: 1650, y: 9730, size: 75, rotation: -4 },
-  { sprite: "tree", x: 1850, y: 9880, size: 85, rotation: 0 },
-  { sprite: "puddle", x: 1700, y: 10030, size: 105, rotation: 0 },
-  { sprite: "barrels", x: 1850, y: 10130, size: 80, rotation: -6 },
+  { sprite: "crate", x: 650, y: 8970, size: 70, rotation: 4 },
+  { sprite: "barrels", x: 680, y: 9070, size: 85, rotation: -6 },
+  { sprite: "plants", x: 650, y: 9270, size: 65, rotation: -5 },
+  { sprite: "crate_small", x: 1250, y: 8970, size: 55, rotation: -9 },
+  { sprite: "plants", x: 1260, y: 9120, size: 62, rotation: 8 },
+  { sprite: "table", x: 680, y: 9920, size: 100, rotation: -2 },
+  { sprite: "chair", x: 680, y: 10020, size: 60, rotation: 7 },
+  { sprite: "chest", x: 650, y: 10170, size: 75, rotation: -4 },
+  { sprite: "campfire", x: 1300, y: 9920, size: 95, rotation: 0 },
+  { sprite: "tree", x: 1250, y: 10120, size: 90, rotation: 0 },
+  { sprite: "puddle", x: 1350, y: 10220, size: 110, rotation: 0 },
+  { sprite: "plants", x: 80, y: 8770, size: 60, rotation: -5 },
+  { sprite: "plants", x: 400, y: 8770, size: 60, rotation: 8 },
+  { sprite: "carpet", x: 270, y: 9170, size: 150, rotation: 0 },
+  { sprite: "chest", x: 150, y: 9320, size: 75, rotation: -4 },
+  { sprite: "table", x: 380, y: 9320, size: 95, rotation: 3 },
+  { sprite: "chair", x: 380, y: 9410, size: 55, rotation: 6 },
+  { sprite: "carpet", x: 1750, y: 8820, size: 120, rotation: 0 },
+  { sprite: "crate", x: 1650, y: 8970, size: 70, rotation: 4 },
+  { sprite: "crate_small", x: 1850, y: 8970, size: 55, rotation: -8 },
+  { sprite: "barrel", x: 1700, y: 9170, size: 60, rotation: 3 },
+  { sprite: "table", x: 1850, y: 9220, size: 95, rotation: -2 },
+  { sprite: "chair", x: 1850, y: 9310, size: 55, rotation: 6 },
+  { sprite: "plants", x: 1620, y: 9420, size: 65, rotation: -5 },
+  { sprite: "campfire", x: 1800, y: 9570, size: 90, rotation: 0 },
+  { sprite: "chest", x: 1650, y: 9770, size: 75, rotation: -4 },
+  { sprite: "tree", x: 1850, y: 9920, size: 85, rotation: 0 },
+  { sprite: "puddle", x: 1700, y: 10070, size: 105, rotation: 0 },
+  { sprite: "barrels", x: 1850, y: 10170, size: 80, rotation: -6 },
 ];
 
 /**
@@ -686,7 +688,6 @@ export const ENTITY_KINDS: Record<string, EntityKindConfig> = {
   },
 };
 
-// SHIFTED +480
 export const ENTITIES: EntityDef[] = [
-  { kind: "ball", id: "ball-main", x: 1000, y: 9730, radius: 46, color: "#e0e0e0" },
+  { kind: "ball", id: "ball-main", x: 1000, y: 9770, radius: 46, color: "#e0e0e0" },
 ];
