@@ -52,9 +52,6 @@ import type { EntityView, PredictionContext } from "../entities/registry";
 import { MultiplayerClient } from "../network/MultiplayerClient";
 import type { RoomState } from "../network/state";
 
-/**
- * basically rendering templates for everything
- */
 export class GameScene extends Phaser.Scene {
   private cursor!: Phaser.GameObjects.Image;
   private cursorOutline!: Phaser.GameObjects.Image;
@@ -78,7 +75,6 @@ export class GameScene extends Phaser.Scene {
   private facingAngle = 0;
   private ride?: {
     path: Array<{ x: number; y: number }>;
-    /** index of the waypoint currently being travelled toward */
     leg: number;
     speed: number;
     endsAt: number;
@@ -123,8 +119,6 @@ export class GameScene extends Phaser.Scene {
 
     const startX = SPAWN_POINT.x;
     const startY = SPAWN_POINT.y;
-    // `cursor` stays the positioned object every other system already reads
-    // (collision, camera, colour stations); the ink layer just follows it.
     this.cursor = this.add.image(startX, startY, "mouseBody");
     this.cursor.setTint(this.localColor);
     this.cursor.setDepth(9);
@@ -136,8 +130,6 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.cursor, true, 0.35, 0.35);
     this.cameras.main.setDeadzone(100, 80);
 
-    // The narration proper lives on the dungeon floor (WORLD_TEXTS); this is
-    // only for connection state, which has nowhere in-world to live.
     this.status = this.add
       .text(16, 14, "", { fontFamily: FONT_HAND, fontSize: "22px", color: INK_SOFT_CSS })
       .setScrollFactor(0)
@@ -261,8 +253,6 @@ export class GameScene extends Phaser.Scene {
     const cursorFromY = this.cursor.y;
 
     if (this.updateSlide(time, dt)) {
-      // riding: input is dropped on the floor rather than banked up, so you
-      // don't get flung when the ride lets go
       this.pendingInput.set(0, 0);
       this.velocity.set(0, 0);
     } else {
@@ -316,7 +306,6 @@ export class GameScene extends Phaser.Scene {
     this.updateColorStation();
     this.updateEndCredits();
     this.updateSpray(time);
-    // the art points up (-Y), facingAngle is measured from +X
     const heading = this.facingAngle + Math.PI / 2;
     this.cursor.setRotation(heading);
     this.cursorOutline.setPosition(this.cursor.x, this.cursor.y).setRotation(heading);
@@ -351,12 +340,6 @@ export class GameScene extends Phaser.Scene {
     this.githubEntered = enteredGithub;
   }
 
-  /**
-   * Slides take control away and carry you to the exit. Movement here is
-   * deliberately NOT collision-checked -- a chute that could snag on a wall
-   * would strand the player, so the level data owns keeping the path clear.
-   * Returns true while a ride is in progress.
-   */
   private updateSlide(time: number, dt: number): boolean {
     if (!this.ride) {
       const slide = findSlide(this.cursor, this.radius);
@@ -369,8 +352,6 @@ export class GameScene extends Phaser.Scene {
       };
     }
 
-    // Budget for this frame, spent walking down the path. A single frame can
-    // cross a short leg entirely, so keep consuming legs until it runs out.
     let budget = this.ride.speed * dt;
 
     while (budget > 0) {
@@ -427,7 +408,6 @@ export class GameScene extends Phaser.Scene {
     this.spraying = false;
   }
 
-  /** swap the avatar's linework so which button is down is visible on the mouse itself */
   private setClicking(button: "left" | "right" | null) {
     this.cursorOutline.setTexture(
       button === "left"

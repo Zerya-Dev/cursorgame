@@ -15,7 +15,6 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.NO_CENTER,
   },
-  // This helps make SVGs and shapes look crisp on high-res screens
   antialias: true,
   disableContextMenu: true,
   scene: [BootScene, GameScene],

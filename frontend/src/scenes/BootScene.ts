@@ -1,10 +1,8 @@
 import Phaser from "phaser";
 import { PAPER_CSS } from "../gameplay/palette";
 
-/** Kenney Scribble Dungeons tiles, vendored under public/assets/scribble. */
 const SCRIBBLE_TEXTURES = [
-  // seamless crops of the pack art: the stock tiles.png leaves gaps where the
-  // 2x2 grid repeats, and wall.png is a closed box that tiles into a ladder
+  // a map for textures ig?
   "floor_cell",
   "wall_seam",
   "tiles_cracked",
@@ -41,8 +39,6 @@ export class BootScene extends Phaser.Scene {
       this.load.image(key, `assets/scribble/${key}.png`);
     }
 
-    // Two layers: the body is white so setTint can colour it per player, the
-    // linework stays untinted on top.
     this.load.svg("mouseBody", "assets/scribble/mouse_body.svg", { width: 52, height: 52 });
     this.load.svg("mouseInk", "assets/scribble/mouse_ink.svg", { width: 52, height: 52 });
     this.load.svg("mouseInkClickLeft", "assets/scribble/mouse_ink_click_left.svg", {
@@ -58,8 +54,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   async create() {
-    // Phaser measures text at creation time, so the webfont has to be resident
-    // before GameScene builds any labels or they all bake in the fallback face.
+    // TODO unused?
     await this.loadFonts();
     this.scene.start("GameScene");
   }
@@ -72,8 +67,6 @@ export class BootScene extends Phaser.Scene {
         document.fonts.load('bold 16px "Patrick Hand"'),
       ]);
       await document.fonts.ready;
-    } catch {
-      // fallback face in palette.ts FONT_HAND covers this
-    }
+    } catch {}
   }
 }

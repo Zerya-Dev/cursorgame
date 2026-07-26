@@ -13,18 +13,13 @@ export type Obstacle = Rect;
 
 export interface Door extends Rect {
   id: string;
-  /** once opened, stays open forever instead of re-locking when plates release */
   permanent?: boolean;
-  /** each inner list is an AND group; satisfying any group opens the door */
   plateGroups?: string[][];
 }
 
 export interface PlateFilter {
-  /** "player" restricts to players; an ENTITY_KINDS key (e.g. "ball") restricts to that kind; omitted = any presser */
   entityKind?: string;
-  /** occupant's color must match (case-insensitive) */
   color?: string;
-  /** occupant must be carrying an electric charge */
   charged?: boolean;
 }
 
@@ -38,9 +33,7 @@ export type PlateCountRule =
 export interface PressurePlate extends Rect {
   id: string;
   doorIds: string[];
-  /** what counts as an occupant; omitted = any presser */
   filter?: PlateFilter;
-  /** requirement on the number of matching occupants; omitted = at least 1 */
   count?: PlateCountRule;
   label?: string;
   countLabel?: string;
@@ -58,17 +51,11 @@ export interface LavaZone extends Obstacle {
 export interface MovingLavaWall {
   y: number;
   height: number;
-  /** width of the whole solid-gap-solid assembly, less than the room's width so it can slide */
   wallWidth: number;
-  /** width of the gap (hole) cut into the wall */
   gapWidth: number;
-  /** where the gap's left edge sits within the assembly, measured from the assembly's own left edge */
   gapOffset: number;
-  /** world px/sec the assembly sweeps */
   speed: number;
-  /** most lanes sweep right to left; a scattered few go the other way for variety */
   direction: "rightToLeft" | "leftToRight";
-  /** px added before the loop wraps, so lanes don't all move in lockstep */
   startOffset: number;
   teleportTo: { x: number; y: number };
 }
@@ -78,13 +65,13 @@ export interface WorldText {
   y: number;
   text: string;
   size: number;
-  /** degrees of tilt, so floor signs don't read as typeset; defaults to a slight lean */
   rotation?: number;
 }
 
 const T = 40; // wall thickness
 
-// Where the corridor (above) narrows down into the lobby (below).
+/*  REFERENCE POINTS IN WORLD  */
+
 const LOBBY_TOP = CORRIDOR_HEIGHT;
 const CORRIDOR_LEFT = (WORLD_WIDTH - CORRIDOR_WIDTH) / 2;
 const CORRIDOR_RIGHT = CORRIDOR_LEFT + CORRIDOR_WIDTH;
@@ -106,8 +93,7 @@ const MOVING_ROOM_ENTRANCE = { x: WORLD_WIDTH / 2, y: MOVING_ROOM_BOTTOM - 40 };
 
 const MOVING_ROOM_STUB_BELOW = 130; // corridor between the maze and this room
 
-// Four large sectors, separated by doors that have to be held by another player.
-const MAZE_WIDTH = 1840;
+const MAZE_WIDTH = 1840; // CHANGABLE VARS @Damian
 const MAZE_LEFT = (WORLD_WIDTH - MAZE_WIDTH) / 2;
 const MAZE_RIGHT = MAZE_LEFT + MAZE_WIDTH;
 const MAZE_COLS = 8;
@@ -179,13 +165,11 @@ export interface EntityKindConfig {
 }
 
 export const OBSTACLES: Obstacle[] = [
-  // Outer walls
   { x: 0, y: 0, width: CORRIDOR_LEFT, height: T },
   { x: CORRIDOR_RIGHT, y: 0, width: WORLD_WIDTH - CORRIDOR_RIGHT, height: T },
   { x: 0, y: 0, width: T, height: MAIN_LOBBY_BOTTOM },
   { x: WORLD_WIDTH - T, y: 0, width: T, height: MAIN_LOBBY_BOTTOM },
 
-  // End-credits room, added above the original map without moving it.
   { x: 500, y: WORLD_TOP, width: 1000, height: T },
   { x: 500, y: WORLD_TOP, width: T, height: -WORLD_TOP },
   { x: 1460, y: WORLD_TOP, width: T, height: -WORLD_TOP },
@@ -206,7 +190,6 @@ export const OBSTACLES: Obstacle[] = [
     height: MAZE_TOP - MOVING_ROOM_BOTTOM,
   },
 
-  // The lava maze's own side walls, nearly spanning the full page.
   { x: T, y: MAZE_TOP, width: MAZE_LEFT - T, height: MAZE_BOTTOM - MAZE_TOP },
   {
     x: MAZE_RIGHT,
@@ -215,7 +198,6 @@ export const OBSTACLES: Obstacle[] = [
     height: MAZE_BOTTOM - MAZE_TOP,
   },
 
-  // Sector dividers leave one cell-wide opening occupied by a synchronized door.
   { x: MAZE_LEFT, y: MAZE_GATE_A_Y, width: MAZE_GATE_A_X - MAZE_LEFT, height: MAZE_GATE_THICKNESS },
   {
     x: MAZE_GATE_A_X + MAZE_GATE_WIDTH,
@@ -553,7 +535,6 @@ export const TRASH_PLATE_ID = "plate-trash";
 export const TRASH_DOOR_ID = "2";
 
 export const ELECTRIC_SOURCE: Rect = { x: 650, y: 9420, width: 90, height: 90 };
-/** how close two players' centers must be to conduct a charge between them */
 export const ELECTRIC_LINK_RANGE = 70;
 
 export const DOOR_RECTS: Record<string, Rect> = Object.fromEntries(
@@ -688,10 +669,6 @@ export const MOVING_LAVA_WALLS: MovingLavaWall[] = Array.from(
     gapWidth: MOVING_WALL_GAP,
     gapOffset: (i * 337) % MOVING_WALL_MAX_GAP_OFFSET,
     speed: 170 + (i % 5) * 20,
-    // Deterministic, not Math.random() -- every client evaluates this module independently,
-    // so "which lanes run backwards" has to fall out of the lane index the same way on
-    // everyone's machine, or players would see different walls going different directions.
-    // (i * 41) % 9 === 0 scatters roughly 1 in 9 lanes without a visible repeating cadence.
     direction: (i * 41) % 9 === 0 ? "leftToRight" : "rightToLeft",
     startOffset: (i * 613) % MOVING_WALL_CYCLE,
     teleportTo: MOVING_ROOM_ENTRANCE,
@@ -733,7 +710,6 @@ export const SLIDES: Slide[] = [
   },
 ];
 
-// FIXED Texts that got broken in the merge + applied +480 shift
 export const WORLD_TEXTS: WorldText[] = [
   { x: 1000, y: -510, text: "you found the cheese.", size: 48, rotation: -1 },
   { x: 1000, y: -390, text: "thank you for playin the prototype", size: 30, rotation: 1 },
@@ -826,11 +802,6 @@ export const DECORATIONS: DecorDef[] = [
   { sprite: "barrels", x: 1850, y: 10170, size: 80, rotation: -6 },
 ];
 
-/**
- * The goal. Kept as named level data rather than a special case in the scene,
- * because more stages are planned after this one. Sits in the landing above
- * the maze, reached after clearing it and door "2" (which the trash plate opens).
- */
 export const CHEESE = { x: WORLD_WIDTH / 2, y: -445, size: 96 };
 
 export const END_CREDITS_GITHUB = { x: 810, y: -180, width: 380, height: 72 };

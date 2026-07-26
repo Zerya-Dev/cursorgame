@@ -3,7 +3,7 @@ export const GAME_HEIGHT = 1080;
 
 export { WORLD_WIDTH, WORLD_HEIGHT } from "@shared";
 
-// Colyseus backend endpoint. Override with VITE_COLYSEUS_URL in a .env file.
+// FOR BACKEND (Colyseus)
 export const ROOM_NAME = "main_room";
 export const COLYSEUS_URL =
   import.meta.env.VITE_COLYSEUS_URL ??

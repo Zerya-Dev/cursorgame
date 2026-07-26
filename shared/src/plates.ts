@@ -1,7 +1,6 @@
 import type { PlateCountRule, PlateFilter, PressurePlate } from "./level.js";
 
 export interface PlateOccupant {
-  /** "player" or an ENTITY_KINDS key */
   entityKind: string;
   color: string;
   charged?: boolean;
@@ -15,8 +14,6 @@ export function occupantMatchesFilter(occupant: PlateOccupant, filter?: PlateFil
   return true;
 }
 
-// Looks up how many matching occupants sit on another plate, by id.
-// needed for the 50/50 split
 export type OtherPlateCount = (plateId: string) => number;
 
 const noOtherPlates: OtherPlateCount = () => 0;
