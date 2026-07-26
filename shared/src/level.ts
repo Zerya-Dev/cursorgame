@@ -688,6 +688,8 @@ export interface Slide {
   entry: Rect;
   path: Array<{ x: number; y: number }>;
   speed?: number;
+  acceleration?: number;
+  launchSpeed?: number;
 }
 
 export const SLIDES: Slide[] = [
@@ -712,7 +714,9 @@ export const SLIDES: Slide[] = [
       { x: 1590, y: 10360 },
       { x: 1760, y: 10140 },
     ],
-    speed: 850,
+    speed: 1000,
+    acceleration: 900,
+    launchSpeed: 4000,
   },
 ];
 

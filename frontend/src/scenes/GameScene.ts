@@ -93,8 +93,11 @@ export class GameScene extends Phaser.Scene {
     path: Array<{ x: number; y: number }>;
     leg: number;
     speed: number;
+    acceleration: number;
+    launchSpeed: number;
     endsAt: number;
   };
+  private launchMomentum = false;
   private touchNavigation = false;
   private touchPointerId?: number;
   private previousTouch = new Phaser.Math.Vector2();
@@ -310,7 +313,7 @@ export class GameScene extends Phaser.Scene {
 
       const speed = this.velocity.length();
       const maxSpeed = this.maxSpeed * speedMultiplier;
-      if (speed > maxSpeed) {
+      if (speed > maxSpeed && !this.launchMomentum) {
         this.velocity.scale(maxSpeed / speed);
       }
       if (speed > 5) {
@@ -322,6 +325,7 @@ export class GameScene extends Phaser.Scene {
       const dx = this.velocity.x * travelScale;
       const dy = this.velocity.y * travelScale;
       this.velocity.scale(decay);
+      if (this.velocity.length() <= maxSpeed) this.launchMomentum = false;
 
       if (this.noclip) {
         this.cursor.x += dx;
@@ -393,6 +397,8 @@ export class GameScene extends Phaser.Scene {
         path: slide.path,
         leg: 0,
         speed: slide.speed ?? SLIDE_DEFAULT_SPEED,
+        acceleration: slide.acceleration ?? 0,
+        launchSpeed: slide.launchSpeed ?? 0,
         endsAt: time + SLIDE_MAX_MS,
       };
     }
@@ -403,6 +409,13 @@ export class GameScene extends Phaser.Scene {
       if (this.ride.leg >= this.ride.path.length || time >= this.ride.endsAt) {
         const last = this.ride.path[this.ride.path.length - 1];
         this.cursor.setPosition(last.x, last.y);
+        const previous = this.ride.path[this.ride.path.length - 2];
+        if (previous && this.ride.launchSpeed > 0) {
+          const angle = Math.atan2(last.y - previous.y, last.x - previous.x);
+          this.velocity.setToPolar(angle, this.ride.launchSpeed);
+          this.facingAngle = angle;
+          this.launchMomentum = true;
+        }
         this.ride = undefined;
         return false;
       }
@@ -424,6 +437,8 @@ export class GameScene extends Phaser.Scene {
       this.facingAngle = Math.atan2(dy, dx);
       budget = 0;
     }
+
+    this.ride.speed += this.ride.acceleration * dt;
 
     return true;
   }
