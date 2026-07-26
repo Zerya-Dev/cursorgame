@@ -11,6 +11,7 @@ import {
   FOOTBALL_PITCH,
   MAIN_LOBBY_BOTTOM,
   OBSTACLES,
+  POWERED_CAMPFIRE,
   PLATES,
   TRASH_PLATE_ID,
   WORLD_TOP,
@@ -45,6 +46,62 @@ export interface DoorRuntime {
   axis: "x" | "y";
   closedPos: [number, number];
   openPos: [number, number];
+}
+
+export interface PoweredCampfireRuntime {
+  image: Phaser.GameObjects.Image;
+  label: Phaser.GameObjects.Text;
+  flames: Phaser.GameObjects.Arc[];
+  powered: boolean;
+  tween?: Phaser.Tweens.Tween;
+}
+
+export function buildPoweredCampfire(scene: Phaser.Scene): PoweredCampfireRuntime {
+  const image = scene.add
+    .image(POWERED_CAMPFIRE.x, POWERED_CAMPFIRE.y, "campfire")
+    .setDisplaySize(POWERED_CAMPFIRE.size, POWERED_CAMPFIRE.size)
+    .setDepth(3);
+  const label = scene.add
+    .text(POWERED_CAMPFIRE.x, POWERED_CAMPFIRE.y + POWERED_CAMPFIRE.size * 0.6, "", {
+      fontFamily: FONT_HAND,
+      fontSize: "24px",
+      color: INK_CSS,
+    })
+    .setOrigin(0.5, 0)
+    .setDepth(4);
+  const flames = [
+    scene.add.circle(POWERED_CAMPFIRE.x - 10, POWERED_CAMPFIRE.y - 18, 13, 0xd96f32),
+    scene.add.circle(POWERED_CAMPFIRE.x + 9, POWERED_CAMPFIRE.y - 20, 11, 0xf2c14e),
+    scene.add.circle(POWERED_CAMPFIRE.x, POWERED_CAMPFIRE.y - 32, 9, 0xf28c28),
+  ];
+  for (const flame of flames) flame.setVisible(false).setDepth(4);
+  return { image, label, flames, powered: false };
+}
+
+export function setPoweredCampfire(
+  scene: Phaser.Scene,
+  runtime: PoweredCampfireRuntime,
+  powered: boolean,
+) {
+  if (runtime.powered === powered) return;
+  runtime.powered = powered;
+  runtime.tween?.remove();
+  runtime.tween = undefined;
+  runtime.label.setText(powered ? "*fwoosh*" : "");
+  runtime.flames.forEach((flame) => flame.setVisible(powered).setScale(1).setAlpha(1));
+  if (powered) {
+    runtime.tween = scene.tweens.add({
+      targets: runtime.flames,
+      scaleX: 0.72,
+      scaleY: 1.35,
+      alpha: 0.7,
+      duration: 180,
+      yoyo: true,
+      repeat: -1,
+      stagger: 55,
+      ease: "Sine.easeInOut",
+    });
+  }
 }
 
 export function animateDoor(scene: Phaser.Scene, runtime: DoorRuntime, opening: boolean) {
@@ -407,7 +464,7 @@ export function drawLevel(scene: Phaser.Scene) {
 }
 
 export function buildInteractables(scene: Phaser.Scene) {
-  const plates: PlateRuntime[] = PLATES.map((def) => {
+  const plates: PlateRuntime[] = PLATES.filter((def) => !def.hidden).map((def) => {
     const cx = def.x + def.width / 2;
     const cy = def.y + def.height / 2;
 

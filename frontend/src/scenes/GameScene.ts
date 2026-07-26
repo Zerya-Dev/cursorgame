@@ -4,6 +4,7 @@ import {
   COLOR_STATIONS,
   CHEESE,
   ELECTRIC_SOURCES,
+  END_POWER_PLATE_ID,
   END_CREDITS_GITHUB,
   GITHUB_URL,
   LAVA_ZONES,
@@ -28,11 +29,18 @@ import {
   animatePlate,
   buildButton,
   buildInteractables,
+  buildPoweredCampfire,
   drawLevel,
+  setPoweredCampfire,
   updateButtonView,
   updateCollectorProgress,
 } from "../gameplay/levelView";
-import type { ButtonRuntime, DoorRuntime, PlateRuntime } from "../gameplay/levelView";
+import type {
+  ButtonRuntime,
+  DoorRuntime,
+  PlateRuntime,
+  PoweredCampfireRuntime,
+} from "../gameplay/levelView";
 import {
   buildLavaZones,
   buildMovingLavaWalls,
@@ -70,6 +78,7 @@ export class GameScene extends Phaser.Scene {
   private plates: PlateRuntime[] = [];
   private movingWalls: MovingWallRuntime[] = [];
   private button!: ButtonRuntime;
+  private poweredCampfire!: PoweredCampfireRuntime;
   private interactiveProps: InteractivePropRuntime[] = [];
   private multiplayer?: MultiplayerClient;
   private renderPlayers!: RenderPlayers;
@@ -122,6 +131,7 @@ export class GameScene extends Phaser.Scene {
     buildWorldTexts(this, WORLD_TEXTS);
     for (const source of ELECTRIC_SOURCES) buildElectricSource(this, source);
     this.button = buildButton(this);
+    this.poweredCampfire = buildPoweredCampfire(this);
     this.interactiveProps = buildInteractiveProps(this);
     this.renderPlayers = new RenderPlayers(this);
 
@@ -488,6 +498,10 @@ export class GameScene extends Phaser.Scene {
       }
     });
     state.plates.forEach((plate, id) => {
+      if (id === END_POWER_PLATE_ID) {
+        setPoweredCampfire(this, this.poweredCampfire, plate.active);
+        return;
+      }
       const runtime = this.plates.find(({ def }) => def.id === id);
       if (!runtime) return;
       if (runtime.active !== plate.active) {

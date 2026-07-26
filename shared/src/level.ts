@@ -38,6 +38,7 @@ export interface PressurePlate extends Rect {
   count?: PlateCountRule;
   label?: string;
   countLabel?: string;
+  hidden?: boolean;
 }
 
 export interface ColorStation extends Rect {
@@ -92,11 +93,11 @@ export const MOVING_WALL_ROOM_LEFT = T;
 export const MOVING_WALL_ROOM_RIGHT = MAP_WIDTH - T;
 const MOVING_ROOM_ENTRANCE = { x: MAP_WIDTH / 2, y: MOVING_ROOM_BOTTOM - 40 };
 
-export const END_POWER_DOOR_ID = "end-power";
 export const END_POWER_MIN_PLAYERS = 3;
+export const END_POWER_PLATE_ID = "plate-end-power";
 export const END_POWER_SOURCE: Rect = { x: 1580, y: 9420, width: 60, height: 60 };
-export const END_POWER_TARGET: Rect = { x: 1800, y: 9420, width: 60, height: 60 };
-const MEOW_NOOK = { x: 1740, y: 9700, width: 220, height: 220 };
+export const END_POWER_TARGET: Rect = { x: 1790, y: 9400, width: 100, height: 100 };
+export const POWERED_CAMPFIRE = { x: 1840, y: 9450, size: 110 };
 
 const MOVING_ROOM_STUB_BELOW = 130; // corridor between the maze and this room
 
@@ -176,10 +177,6 @@ export const OBSTACLES: Obstacle[] = [
   { x: CORRIDOR_RIGHT, y: 0, width: MAP_WIDTH - CORRIDOR_RIGHT, height: T },
   { x: 0, y: 0, width: T, height: MAIN_LOBBY_BOTTOM },
   { x: MAP_WIDTH - T, y: 0, width: T, height: MAIN_LOBBY_BOTTOM },
-  { x: MEOW_NOOK.x, y: MEOW_NOOK.y, width: 60, height: T },
-  { x: 1900, y: MEOW_NOOK.y, width: 60, height: T },
-  { x: MEOW_NOOK.x, y: MEOW_NOOK.y, width: T, height: MEOW_NOOK.height },
-  { x: MEOW_NOOK.x, y: MEOW_NOOK.y + MEOW_NOOK.height - T, width: MEOW_NOOK.width, height: T },
 
   { x: 500, y: WORLD_TOP, width: 1000, height: T },
   { x: 500, y: WORLD_TOP, width: T, height: -WORLD_TOP },
@@ -296,14 +293,6 @@ export const OBSTACLES: Obstacle[] = [
 
 export const DOORS: Door[] = [
   {
-    x: 1800,
-    y: MEOW_NOOK.y,
-    width: 100,
-    height: T,
-    id: END_POWER_DOOR_ID,
-    permanent: true,
-  },
-  {
     x: MAZE_GATE_A_X,
     y: MAZE_GATE_A_Y,
     width: MAZE_GATE_WIDTH,
@@ -372,12 +361,11 @@ export const DOORS: Door[] = [
 
 export const PLATES: PressurePlate[] = [
   {
-    id: "plate-end-power",
+    id: END_POWER_PLATE_ID,
     ...END_POWER_TARGET,
-    doorIds: [END_POWER_DOOR_ID],
+    doorIds: [],
     filter: { entityKind: "player", charged: true },
-    label: "POWER",
-    countLabel: `x${END_POWER_MIN_PLAYERS}`,
+    hidden: true,
   },
   {
     id: "plate-maze-c-south",
@@ -736,11 +724,10 @@ export const WORLD_TEXTS: WorldText[] = [
   {
     x: 1740,
     y: 9340,
-    text: "CONNECT IT WITH YOUR BODIES",
+    text: "light the *hackclub campfire* with your bodies",
     size: 20,
     rotation: -1,
   },
-  { x: 1860, y: 9810, text: "*meow*", size: 30, rotation: 1 },
   { x: 1000, y: -255, text: "and... Claude", size: 28, rotation: -1 },
   {
     x: 1000,
@@ -921,7 +908,6 @@ export const DECORATIONS: DecorDef[] = [
   { sprite: "table", x: 1850, y: 9220, size: 95, rotation: -2 },
   { sprite: "chair", x: 1850, y: 9310, size: 55, rotation: 6 },
   { sprite: "plants", x: 1620, y: 9420, size: 65, rotation: -5 },
-  { sprite: "campfire", x: 1800, y: 9570, size: 90, rotation: 0 },
   { sprite: "chest", x: 1650, y: 9770, size: 75, rotation: -4 },
   { sprite: "tree", x: 1850, y: 9920, size: 85, rotation: 0 },
   { sprite: "puddle", x: 1700, y: 10070, size: 105, rotation: 0 },

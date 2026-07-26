@@ -13,8 +13,8 @@ import {
   DOORS,
   ELECTRIC_LINK_RANGE,
   ELECTRIC_SOURCES,
-  END_POWER_DOOR_ID,
   END_POWER_MIN_PLAYERS,
+  END_POWER_PLATE_ID,
   END_POWER_SOURCE,
   END_POWER_TARGET,
   INTERACTIVE_PROPS,
@@ -321,7 +321,7 @@ export class MainRoom extends Room {
   private updateGameplay() {
     this.updateElectricity();
     const now = Date.now();
-    if (this.hasEndPowerChain()) this.unlockedDoors.add(END_POWER_DOOR_ID);
+    const endPowerConnected = this.hasEndPowerChain();
     const totalPlayers = this.state.players.size;
 
     const occupantsByPlate = new Map<string, PlateOccupant[]>();
@@ -338,12 +338,15 @@ export class MainRoom extends Room {
 
     const activePlates = new Map<string, boolean>();
     for (const definition of PLATES) {
-      const active = evaluatePlate(
-        occupantsByPlate.get(definition.id) ?? [],
-        definition,
-        totalPlayers,
-        otherCount,
-      );
+      const active =
+        definition.id === END_POWER_PLATE_ID
+          ? endPowerConnected
+          : evaluatePlate(
+              occupantsByPlate.get(definition.id) ?? [],
+              definition,
+              totalPlayers,
+              otherCount,
+            );
       activePlates.set(definition.id, active);
       const plate = this.state.plates.get(definition.id);
       if (plate) plate.active = active;
@@ -357,14 +360,11 @@ export class MainRoom extends Room {
         definition.doorIds.includes(doorId),
       );
       const satisfied =
-        doorId === END_POWER_DOOR_ID
-          ? false
-          : doorId === TRASH_DOOR_ID
-            ? this.state.button.stage === 2 && this.prankBallsRemaining() === 0
-            : doorDef?.plateGroups
-              ? doorDef.plateGroups.some((group) => group.every((id) => activePlates.get(id)))
-              : gatingPlates.length > 0 &&
-                gatingPlates.every((plate) => activePlates.get(plate.id));
+        doorId === TRASH_DOOR_ID
+          ? this.state.button.stage === 2 && this.prankBallsRemaining() === 0
+          : doorDef?.plateGroups
+            ? doorDef.plateGroups.some((group) => group.every((id) => activePlates.get(id)))
+            : gatingPlates.length > 0 && gatingPlates.every((plate) => activePlates.get(plate.id));
       if (satisfied) {
         this.doorOpenUntil.set(doorId, now + DOOR_HOLD_MS);
         if (PERMANENT_DOORS.has(doorId)) this.unlockedDoors.add(doorId);
