@@ -741,6 +741,13 @@ export const WORLD_TEXTS: WorldText[] = [
   { x: MAZE_GATE_B_X + 100, y: MAZE_GATE_B_Y + 52, text: "GATE B", size: 23, rotation: 1 },
   { x: MAZE_GATE_A_X + 100, y: MAZE_GATE_A_Y + 52, text: "GATE A", size: 23, rotation: -1 },
   { x: 1000, y: MAZE_TOP + 210, text: "EXIT LOCK: bring the ball from sector D", size: 25 },
+  {
+    x: 1005,
+    y: 8905,
+    text: "you need 5+ mice to play the game!",
+    size: 22,
+    rotation: -1,
+  },
   { x: 1120, y: 9920, text: "look! a droga szybkiego ruchu!", size: 24, rotation: 2 },
   { x: 270, y: 9920, text: "try using the right button", size: 24, rotation: 2 },
   { x: 270, y: 8820, text: "pick a colour", size: 28, rotation: -3 },
