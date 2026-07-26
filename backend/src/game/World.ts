@@ -2,6 +2,7 @@ import {
   DOOR_IDS,
   DOOR_RECTS,
   ENTITIES,
+  LAVA_ZONES,
   OBSTACLES,
   circleOverlapsRect,
   collideCircles,
@@ -84,7 +85,7 @@ export class World {
   }
 
   private collectSolids() {
-    this.solids = [...OBSTACLES];
+    this.solids = [...OBSTACLES, ...LAVA_ZONES];
     for (const doorId of DOOR_IDS) {
       if (!this.state.doors.get(doorId)?.open) this.solids.push(DOOR_RECTS[doorId]);
     }
