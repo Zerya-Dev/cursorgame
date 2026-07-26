@@ -85,6 +85,7 @@ export class GameScene extends Phaser.Scene {
   private touchPointerId?: number;
   private previousTouch = new Phaser.Math.Vector2();
   private noclip = false;
+  private speedBoost = false;
   private readonly radius = PLAYER_RADIUS;
   private readonly sensitivity = 0.82;
   private readonly movementResponse = 14;
@@ -198,6 +199,11 @@ export class GameScene extends Phaser.Scene {
         this.noclip = !this.noclip;
         this.updateHint(this.pointerLocked);
       });
+      this.input.keyboard?.on("keydown-F4", (event: KeyboardEvent) => {
+        if (event.repeat) return;
+        this.speedBoost = !this.speedBoost;
+        this.updateHint(this.pointerLocked);
+      });
     }
 
     this.multiplayer = new MultiplayerClient({
@@ -257,13 +263,17 @@ export class GameScene extends Phaser.Scene {
       this.pendingInput.set(0, 0);
       this.velocity.set(0, 0);
     } else {
-      this.velocity.x += this.pendingInput.x * this.sensitivity * this.movementResponse;
-      this.velocity.y += this.pendingInput.y * this.sensitivity * this.movementResponse;
+      const speedMultiplier = this.speedBoost ? 5 : 1;
+      this.velocity.x +=
+        this.pendingInput.x * this.sensitivity * this.movementResponse * speedMultiplier;
+      this.velocity.y +=
+        this.pendingInput.y * this.sensitivity * this.movementResponse * speedMultiplier;
       this.pendingInput.set(0, 0);
 
       const speed = this.velocity.length();
-      if (speed > this.maxSpeed) {
-        this.velocity.scale(this.maxSpeed / speed);
+      const maxSpeed = this.maxSpeed * speedMultiplier;
+      if (speed > maxSpeed) {
+        this.velocity.scale(maxSpeed / speed);
       }
       if (speed > 5) {
         this.facingAngle = Math.atan2(this.velocity.y, this.velocity.x);
@@ -281,8 +291,10 @@ export class GameScene extends Phaser.Scene {
       } else {
         moveAndCollide(this.cursor, this.velocity, this.radius, dx, dy, solids);
       }
-      this.updateLava();
-      this.updateMovingLava();
+      if (!this.noclip) {
+        this.updateLava();
+        this.updateMovingLava();
+      }
     }
 
     this.renderPlayers.update(dt);
@@ -532,7 +544,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateHint(locked = this.input.mouse?.locked ?? false) {
-    const debugHint = import.meta.env.DEV ? `\nF2 noclip: ${this.noclip ? "on" : "off"}` : "";
+    const debugHint = import.meta.env.DEV
+      ? `\nF2 noclip + lava immunity: ${this.noclip ? "on" : "off"}\nF4 speed: ${this.speedBoost ? "on" : "off"}`
+      : "";
     if (this.touchNavigation) {
       this.status.setText(`swipe anywhere to scurry${debugHint}`);
       return;
