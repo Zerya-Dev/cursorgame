@@ -671,7 +671,7 @@ export const BUTTON: ButtonDef = {
 };
 
 export const BUTTON_CLICKS_PER_PLAYER = 50;
-export const BUTTON_MIN_CLICK_TARGET = 100;
+export const BUTTON_MIN_CLICK_TARGET = 20;
 
 export const BALL_SPAWN_COLORS = ["#ef4444", "#f97316", "#facc15", "#4ade80", "#60a5fa", "#a78bfa"];
 
