@@ -38,7 +38,7 @@ export function countSatisfiesRule(
       const other = otherCount(rule.withPlateId);
       const combined = count + other;
       const diff = Math.abs(count - other);
-      const minimumParticipants = Math.ceil(totalPlayers * 0.8);
+      const minimumParticipants = rule.minParticipants ?? 3;
       return (
         count > 0 &&
         other > 0 &&
@@ -71,7 +71,7 @@ export function plateCountLabel(rule?: PlateCountRule): string {
     case "allPlayers":
       return "all";
     case "balance":
-      return "50/50";
+      return `50/50 (${rule.minParticipants ?? 3}+)`;
   }
 }
 

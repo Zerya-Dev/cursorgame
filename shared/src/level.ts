@@ -33,7 +33,7 @@ export type PlateCountRule =
   | { mode: "exact"; value: number }
   | { mode: "even" }
   | { mode: "allPlayers" }
-  | { mode: "balance"; withPlateId: string; maxDifference?: number };
+  | { mode: "balance"; withPlateId: string; maxDifference?: number; minParticipants?: number };
 
 export interface PressurePlate extends Rect {
   id: string;
