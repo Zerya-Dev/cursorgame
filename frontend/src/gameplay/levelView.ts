@@ -104,9 +104,14 @@ const BUTTON_STAGES = [
   { label: "fine. good luck trying to clean this up.", fill: 0x6b6459 },
 ];
 
+const BUTTON_MOVE_EVERY_CLICKS = 3;
+const BUTTON_MOVE_RANGE_X = 280;
+const BUTTON_MOVE_RANGE_Y = 180;
+
 export interface ButtonRuntime {
   stage: number;
   messageIndex: number;
+  movementStep: number;
   rect: Phaser.GameObjects.Rectangle;
   label: Phaser.GameObjects.Text;
   pressTween?: Phaser.Tweens.Tween;
@@ -133,7 +138,7 @@ export function buildButton(scene: Phaser.Scene): ButtonRuntime {
     .setOrigin(0.5)
     .setDepth(6);
 
-  return { stage: -1, messageIndex: -1, rect, label };
+  return { stage: -1, messageIndex: -1, movementStep: -1, rect, label };
 }
 
 export function animateButtonPress(scene: Phaser.Scene, runtime: ButtonRuntime) {
@@ -162,6 +167,19 @@ export function updateButtonView(
       : stage === 2
         ? BUTTON_STAGES.length - 1
         : 1 + Math.min(BUTTON_STAGES.length - 3, Math.floor((clicks / Math.max(1, target)) * 5));
+  const moves = stage === 1 && messageIndex >= BUTTON_STAGES.length - 3;
+  const movementStep = moves ? Math.floor(clicks / BUTTON_MOVE_EVERY_CLICKS) : -1;
+  if (runtime.movementStep !== movementStep) {
+    runtime.movementStep = movementStep;
+    const centerX = BUTTON.x + BUTTON.width / 2;
+    const centerY = BUTTON.y + BUTTON.height / 2;
+    const randomX = moves ? Math.sin(movementStep * 12.9898) * 43758.5453 : 0.5;
+    const randomY = moves ? Math.sin((movementStep + 31) * 78.233) * 43758.5453 : 0.5;
+    const x = centerX + ((randomX - Math.floor(randomX)) * 2 - 1) * BUTTON_MOVE_RANGE_X;
+    const y = centerY + ((randomY - Math.floor(randomY)) * 2 - 1) * BUTTON_MOVE_RANGE_Y;
+    runtime.rect.setPosition(x, y);
+    runtime.label.setPosition(x, y);
+  }
   if (runtime.stage === stage && runtime.messageIndex === messageIndex) return;
   runtime.stage = stage;
   runtime.messageIndex = messageIndex;

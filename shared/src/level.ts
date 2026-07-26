@@ -1,6 +1,7 @@
 import type { Rect } from "./physics.js";
 
-export const WORLD_WIDTH = 2000;
+const MAP_WIDTH = 2000;
+export const WORLD_WIDTH = MAP_WIDTH;
 export const WORLD_TOP = -600;
 export const LOBBY_HEIGHT = 2150;
 export const CORRIDOR_WIDTH = 320;
@@ -73,7 +74,7 @@ const T = 40; // wall thickness
 /*  REFERENCE POINTS IN WORLD  */
 
 const LOBBY_TOP = CORRIDOR_HEIGHT;
-const CORRIDOR_LEFT = (WORLD_WIDTH - CORRIDOR_WIDTH) / 2;
+const CORRIDOR_LEFT = (MAP_WIDTH - CORRIDOR_WIDTH) / 2;
 const CORRIDOR_RIGHT = CORRIDOR_LEFT + CORRIDOR_WIDTH;
 
 const CHEESE_LANDING = 110;
@@ -88,13 +89,19 @@ const MOVING_WALL_GAP = 160;
 const MOVING_ROOM_TOP = T + CHEESE_LANDING;
 const MOVING_ROOM_BOTTOM = MOVING_ROOM_TOP + MOVING_ROOM_HEIGHT;
 export const MOVING_WALL_ROOM_LEFT = T;
-export const MOVING_WALL_ROOM_RIGHT = WORLD_WIDTH - T;
-const MOVING_ROOM_ENTRANCE = { x: WORLD_WIDTH / 2, y: MOVING_ROOM_BOTTOM - 40 };
+export const MOVING_WALL_ROOM_RIGHT = MAP_WIDTH - T;
+const MOVING_ROOM_ENTRANCE = { x: MAP_WIDTH / 2, y: MOVING_ROOM_BOTTOM - 40 };
+
+export const END_POWER_DOOR_ID = "end-power";
+export const END_POWER_MIN_PLAYERS = 3;
+export const END_POWER_SOURCE: Rect = { x: 1580, y: 9420, width: 60, height: 60 };
+export const END_POWER_TARGET: Rect = { x: 1800, y: 9420, width: 60, height: 60 };
+const MEOW_NOOK = { x: 1740, y: 9700, width: 220, height: 220 };
 
 const MOVING_ROOM_STUB_BELOW = 130; // corridor between the maze and this room
 
 const MAZE_WIDTH = 1840; // CHANGABLE VARS @Damian
-const MAZE_LEFT = (WORLD_WIDTH - MAZE_WIDTH) / 2;
+const MAZE_LEFT = (MAP_WIDTH - MAZE_WIDTH) / 2;
 const MAZE_RIGHT = MAZE_LEFT + MAZE_WIDTH;
 const MAZE_COLS = 8;
 const MAZE_ROWS = 16;
@@ -144,7 +151,7 @@ const ROOM_GAP_TOP = 9120;
 const ROOM_GAP_HEIGHT = 200;
 const ROOM_GAP_BOTTOM = ROOM_GAP_TOP + ROOM_GAP_HEIGHT;
 
-export const SPAWN_POINT = { x: WORLD_WIDTH / 2, y: LOBBY_TOP + LOBBY_HEIGHT / 2 };
+export const SPAWN_POINT = { x: MAP_WIDTH / 2, y: LOBBY_TOP + LOBBY_HEIGHT / 2 };
 
 export interface EntityDef {
   kind: string;
@@ -166,9 +173,13 @@ export interface EntityKindConfig {
 
 export const OBSTACLES: Obstacle[] = [
   { x: 0, y: 0, width: CORRIDOR_LEFT, height: T },
-  { x: CORRIDOR_RIGHT, y: 0, width: WORLD_WIDTH - CORRIDOR_RIGHT, height: T },
+  { x: CORRIDOR_RIGHT, y: 0, width: MAP_WIDTH - CORRIDOR_RIGHT, height: T },
   { x: 0, y: 0, width: T, height: MAIN_LOBBY_BOTTOM },
-  { x: WORLD_WIDTH - T, y: 0, width: T, height: MAIN_LOBBY_BOTTOM },
+  { x: MAP_WIDTH - T, y: 0, width: T, height: MAIN_LOBBY_BOTTOM },
+  { x: MEOW_NOOK.x, y: MEOW_NOOK.y, width: 60, height: T },
+  { x: 1900, y: MEOW_NOOK.y, width: 60, height: T },
+  { x: MEOW_NOOK.x, y: MEOW_NOOK.y, width: T, height: MEOW_NOOK.height },
+  { x: MEOW_NOOK.x, y: MEOW_NOOK.y + MEOW_NOOK.height - T, width: MEOW_NOOK.width, height: T },
 
   { x: 500, y: WORLD_TOP, width: 1000, height: T },
   { x: 500, y: WORLD_TOP, width: T, height: -WORLD_TOP },
@@ -178,7 +189,7 @@ export const OBSTACLES: Obstacle[] = [
   {
     x: CORRIDOR_RIGHT,
     y: T,
-    width: WORLD_WIDTH - T - CORRIDOR_RIGHT,
+    width: MAP_WIDTH - T - CORRIDOR_RIGHT,
     height: MOVING_ROOM_TOP - T,
   },
 
@@ -186,7 +197,7 @@ export const OBSTACLES: Obstacle[] = [
   {
     x: CORRIDOR_RIGHT,
     y: MOVING_ROOM_BOTTOM,
-    width: WORLD_WIDTH - T - CORRIDOR_RIGHT,
+    width: MAP_WIDTH - T - CORRIDOR_RIGHT,
     height: MAZE_TOP - MOVING_ROOM_BOTTOM,
   },
 
@@ -194,7 +205,7 @@ export const OBSTACLES: Obstacle[] = [
   {
     x: MAZE_RIGHT,
     y: MAZE_TOP,
-    width: WORLD_WIDTH - T - MAZE_RIGHT,
+    width: MAP_WIDTH - T - MAZE_RIGHT,
     height: MAZE_BOTTOM - MAZE_TOP,
   },
 
@@ -236,7 +247,7 @@ export const OBSTACLES: Obstacle[] = [
   {
     x: CORRIDOR_RIGHT,
     y: MAZE_BOTTOM,
-    width: WORLD_WIDTH - T - CORRIDOR_RIGHT,
+    width: MAP_WIDTH - T - CORRIDOR_RIGHT,
     height: ROOM_TOP - MAZE_BOTTOM,
   },
 
@@ -244,7 +255,7 @@ export const OBSTACLES: Obstacle[] = [
   {
     x: CORRIDOR_RIGHT,
     y: ROOM_BOTTOM,
-    width: WORLD_WIDTH - T - CORRIDOR_RIGHT,
+    width: MAP_WIDTH - T - CORRIDOR_RIGHT,
     height: LEVEL1_TOP - ROOM_BOTTOM,
   },
 
@@ -252,7 +263,7 @@ export const OBSTACLES: Obstacle[] = [
   {
     x: LEVEL1_RIGHT,
     y: LEVEL1_TOP,
-    width: WORLD_WIDTH - T - LEVEL1_RIGHT,
+    width: MAP_WIDTH - T - LEVEL1_RIGHT,
     height: LEVEL1_BOTTOM - LEVEL1_TOP,
   },
 
@@ -260,7 +271,7 @@ export const OBSTACLES: Obstacle[] = [
   {
     x: CORRIDOR_RIGHT,
     y: LEVEL1_BOTTOM,
-    width: WORLD_WIDTH - T - CORRIDOR_RIGHT,
+    width: MAP_WIDTH - T - CORRIDOR_RIGHT,
     height: LOBBY_TOP - LEVEL1_BOTTOM,
   },
 
@@ -280,10 +291,18 @@ export const OBSTACLES: Obstacle[] = [
     height: MAIN_LOBBY_BOTTOM - ROOM_GAP_BOTTOM,
   },
 
-  { x: T, y: MAIN_LOBBY_BOTTOM, width: WORLD_WIDTH - T * 2, height: T },
+  { x: T, y: MAIN_LOBBY_BOTTOM, width: MAP_WIDTH - T * 2, height: T },
 ];
 
 export const DOORS: Door[] = [
+  {
+    x: 1800,
+    y: MEOW_NOOK.y,
+    width: 100,
+    height: T,
+    id: END_POWER_DOOR_ID,
+    permanent: true,
+  },
   {
     x: MAZE_GATE_A_X,
     y: MAZE_GATE_A_Y,
@@ -347,11 +366,19 @@ export const DOORS: Door[] = [
     width: T,
     height: ROOM_GAP_HEIGHT,
     id: "practice",
-    plateGroups: [["plate-practice-1", "plate-practice-2"], ["plate-electric-target"]],
+    plateGroups: [["plate-practice-1", "plate-practice-2"]],
   },
 ];
 
 export const PLATES: PressurePlate[] = [
+  {
+    id: "plate-end-power",
+    ...END_POWER_TARGET,
+    doorIds: [END_POWER_DOOR_ID],
+    filter: { entityKind: "player", charged: true },
+    label: "POWER",
+    countLabel: `x${END_POWER_MIN_PLAYERS}`,
+  },
   {
     id: "plate-maze-c-south",
     x: MAZE_RIGHT - 150,
@@ -520,21 +547,12 @@ export const PLATES: PressurePlate[] = [
     doorIds: ["practice"],
     count: { mode: "atLeast", value: 1 },
   },
-  {
-    id: "plate-electric-target",
-    x: 1150,
-    y: 9420,
-    width: 100,
-    height: 100,
-    doorIds: ["practice"],
-    filter: { entityKind: "player", charged: true },
-  },
 ];
 
 export const TRASH_PLATE_ID = "plate-trash";
 export const TRASH_DOOR_ID = "2";
 
-export const ELECTRIC_SOURCE: Rect = { x: 650, y: 9420, width: 90, height: 90 };
+export const ELECTRIC_SOURCES: Rect[] = [END_POWER_SOURCE];
 export const ELECTRIC_LINK_RANGE = 70;
 
 export const DOOR_RECTS: Record<string, Rect> = Object.fromEntries(
@@ -714,6 +732,15 @@ export const WORLD_TEXTS: WorldText[] = [
   { x: 1000, y: -510, text: "you found the cheese.", size: 48, rotation: -1 },
   { x: 1000, y: -390, text: "thank you for playin the prototype", size: 30, rotation: 1 },
   { x: 1000, y: -300, text: "adamd  -  Norbiros  -  MrPOP  -  TheTwoBoom", size: 27 },
+  { x: 1000, y: 260, text: "left-click anything suspicious", size: 26, rotation: -1 },
+  {
+    x: 1740,
+    y: 9340,
+    text: "CONNECT IT WITH YOUR BODIES",
+    size: 20,
+    rotation: -1,
+  },
+  { x: 1860, y: 9810, text: "*meow*", size: 30, rotation: 1 },
   { x: 1000, y: -255, text: "and... Claude", size: 28, rotation: -1 },
   {
     x: 1000,
@@ -777,6 +804,98 @@ export interface DecorDef {
   rotation?: number;
 }
 
+export type InteractivePropKind = "barrel" | "chest" | "trapdoor";
+
+export interface InteractivePropDef extends Rect {
+  id: string;
+  kind: InteractivePropKind;
+  label: string;
+  rotation?: number;
+}
+
+// Small cursor toys live inside the actual course, not only in the waiting lobby.
+export const INTERACTIVE_PROPS: InteractivePropDef[] = [
+  {
+    id: "barrel-lane-1",
+    kind: "barrel",
+    label: "click to inspect",
+    x: 1750,
+    y: 4710,
+    width: 82,
+    height: 82,
+    rotation: -5,
+  },
+  {
+    id: "barrel-lane-2",
+    kind: "barrel",
+    label: "click to inspect",
+    x: 850,
+    y: 5230,
+    width: 82,
+    height: 82,
+    rotation: 7,
+  },
+  {
+    id: "barrel-lane-3",
+    kind: "barrel",
+    label: "click to inspect",
+    x: 1750,
+    y: 5490,
+    width: 82,
+    height: 82,
+    rotation: 3,
+  },
+  {
+    id: "chest-maze-1",
+    kind: "chest",
+    label: "click to peek",
+    x: 850,
+    y: 6010,
+    width: 86,
+    height: 72,
+    rotation: -4,
+  },
+  {
+    id: "chest-maze-2",
+    kind: "chest",
+    label: "click to peek",
+    x: 400,
+    y: 5880,
+    width: 86,
+    height: 72,
+    rotation: 5,
+  },
+  {
+    id: "trapdoor-maze",
+    kind: "trapdoor",
+    label: "click to inspect",
+    x: 850,
+    y: 6530,
+    width: 96,
+    height: 96,
+  },
+  {
+    id: "chest-tax",
+    kind: "chest",
+    label: "click to inspect",
+    x: 700,
+    y: 7310,
+    width: 92,
+    height: 76,
+    rotation: -3,
+  },
+  {
+    id: "trapdoor-balance",
+    kind: "trapdoor",
+    label: "click to inspect",
+    x: 1450,
+    y: 7440,
+    width: 92,
+    height: 92,
+    rotation: 4,
+  },
+];
+
 export const DECORATIONS: DecorDef[] = [
   { sprite: "crate", x: 650, y: 8970, size: 70, rotation: 4 },
   { sprite: "barrels", x: 680, y: 9070, size: 85, rotation: -6 },
@@ -809,7 +928,7 @@ export const DECORATIONS: DecorDef[] = [
   { sprite: "barrels", x: 1850, y: 10170, size: 80, rotation: -6 },
 ];
 
-export const CHEESE = { x: WORLD_WIDTH / 2, y: -445, size: 96 };
+export const CHEESE = { x: MAP_WIDTH / 2, y: -445, size: 96 };
 
 export const END_CREDITS_GITHUB = { x: 810, y: -180, width: 380, height: 72 };
 export const GITHUB_URL = "https://github.com/Zerya-Dev/cursorgame/";
@@ -817,13 +936,13 @@ export const GITHUB_URL = "https://github.com/Zerya-Dev/cursorgame/";
 export interface ButtonDef extends Rect {}
 
 export const BUTTON: ButtonDef = {
-  x: WORLD_WIDTH / 2 - 110,
+  x: MAP_WIDTH / 2 - 110,
   y: ROOM_TOP + ROOM_HEIGHT / 2 - 70,
   width: 220,
   height: 140,
 };
 
-export const BUTTON_CLICKS_PER_PLAYER = 50;
+export const BUTTON_CLICKS_PER_PLAYER = 25;
 export const BUTTON_MIN_CLICK_TARGET = 20;
 
 export const BALL_SPAWN_COLORS = ["#ef4444", "#f97316", "#facc15", "#4ade80", "#60a5fa", "#a78bfa"];

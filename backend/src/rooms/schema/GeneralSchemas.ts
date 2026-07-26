@@ -24,3 +24,9 @@ export class ButtonState extends Schema {
   @type("number") clicks = 0;
   @type("number") target = 0;
 }
+
+export class InteractivePropState extends Schema {
+  @type("string") id = "";
+  /** 0 = closed, 1 = open and inactive */
+  @type("uint8") status = 0;
+}

@@ -1,6 +1,6 @@
 import { Room, Client, CloseCode } from "colyseus";
 import { MainRoomState } from "./schema/MainRoomState.js";
-import { Door, Player, PressurePlate } from "./schema/GeneralSchemas.js";
+import { Door, InteractivePropState, Player, PressurePlate } from "./schema/GeneralSchemas.js";
 import { World } from "../game/World.js";
 import {
   BALL_SPAWN_COLORS,
@@ -12,7 +12,12 @@ import {
   DOOR_IDS,
   DOORS,
   ELECTRIC_LINK_RANGE,
-  ELECTRIC_SOURCE,
+  ELECTRIC_SOURCES,
+  END_POWER_DOOR_ID,
+  END_POWER_MIN_PLAYERS,
+  END_POWER_SOURCE,
+  END_POWER_TARGET,
+  INTERACTIVE_PROPS,
   PLATES,
   PLAYER_RADIUS,
   SPAWN_POINT,
@@ -35,6 +40,8 @@ const TRASH_PLATE: PlateDef = trashPlateDef;
 
 const DOOR_HOLD_MS = 600;
 const TICK_MS = 20;
+const PROP_OUTCOMES = ["bomb", "bomb", "bomb", "speed", "speed", "speed", "nice", "nice"] as const;
+type PropOutcome = (typeof PROP_OUTCOMES)[number];
 
 export class MainRoom extends Room {
   maxClients = 40;
@@ -43,6 +50,7 @@ export class MainRoom extends Room {
   private doorOpenUntil = new Map<string, number>();
   private unlockedDoors = new Set<string>();
   private world = new World(this.state);
+  private propOutcomes = new Map<string, PropOutcome>();
 
   messages = {
     move: (client: Client, message: { x?: unknown; y?: unknown }) => {
@@ -114,6 +122,49 @@ export class MainRoom extends Room {
         this.spawnPrankBalls();
       }
     },
+    interactProp: (client: Client, message: { id?: unknown }) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player || typeof message.id !== "string") return;
+      const definition = INTERACTIVE_PROPS.find(({ id }) => id === message.id);
+      const prop = this.state.interactiveProps.get(message.id);
+      if (!definition || !prop || !this.playerOverlaps(player, definition)) return;
+
+      if (prop.status !== 0) return;
+      prop.status = 1;
+      const outcome = this.propOutcomes.get(definition.id) ?? "nice";
+      this.broadcast("propEffect", { id: definition.id, action: "reveal" });
+      this.clock.setTimeout(() => {
+        if (outcome === "bomb") {
+          const centerX = definition.x + definition.width / 2;
+          const centerY = definition.y + definition.height / 2;
+          const victims: string[] = [];
+          this.state.players.forEach((candidate, sessionId) => {
+            if (Math.hypot(candidate.x - centerX, candidate.y - centerY) >= 240) return;
+            victims.push(sessionId);
+          });
+          this.broadcast("propEffect", { id: definition.id, action: "explode", victims });
+          this.clock.setTimeout(() => {
+            for (const sessionId of victims) {
+              const victim = this.state.players.get(sessionId);
+              if (!victim) continue;
+              victim.x = SPAWN_POINT.x;
+              victim.y = SPAWN_POINT.y;
+            }
+          }, 420);
+        } else {
+          this.broadcast("propEffect", {
+            id: definition.id,
+            action: outcome,
+            recipient: client.sessionId,
+          });
+        }
+      }, 600);
+      this.clock.setTimeout(() => {
+        prop.status = 0;
+        this.propOutcomes.set(definition.id, this.randomPropOutcome());
+        this.broadcast("propEffect", { id: definition.id, action: "reset" });
+      }, 4200);
+    },
   };
 
   onCreate() {
@@ -126,6 +177,13 @@ export class MainRoom extends Room {
       const plate = new PressurePlate();
       plate.id = definition.id;
       this.state.plates.set(definition.id, plate);
+    }
+    const outcomes = [...PROP_OUTCOMES].sort(() => Math.random() - 0.5);
+    for (const [index, definition] of INTERACTIVE_PROPS.entries()) {
+      const prop = new InteractivePropState();
+      prop.id = definition.id;
+      this.state.interactiveProps.set(definition.id, prop);
+      this.propOutcomes.set(definition.id, outcomes[index % outcomes.length]);
     }
     this.state.button.target = BUTTON_MIN_CLICK_TARGET;
     this.setSimulationInterval(() => {
@@ -195,6 +253,10 @@ export class MainRoom extends Room {
     }
   }
 
+  private randomPropOutcome(): PropOutcome {
+    return PROP_OUTCOMES[Math.floor(Math.random() * PROP_OUTCOMES.length)];
+  }
+
   private playerOverlaps(player: Player, rect: Rect) {
     return circleOverlapsRect(player.x, player.y, PLAYER_RADIUS, rect);
   }
@@ -214,7 +276,9 @@ export class MainRoom extends Room {
     const players = [...this.state.players.values()];
     const charged = new Set<Player>();
     for (const player of players) {
-      if (this.playerOverlaps(player, ELECTRIC_SOURCE)) charged.add(player);
+      if (ELECTRIC_SOURCES.some((source) => this.playerOverlaps(player, source))) {
+        charged.add(player);
+      }
     }
     for (let grew = true; grew;) {
       grew = false;
@@ -232,9 +296,32 @@ export class MainRoom extends Room {
     for (const player of players) player.charged = charged.has(player);
   }
 
+  private hasEndPowerChain() {
+    const players = [...this.state.players.values()];
+    const connected = new Set<Player>(
+      players.filter((player) => this.playerOverlaps(player, END_POWER_SOURCE)),
+    );
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const source of connected) {
+        for (const player of players) {
+          if (connected.has(player)) continue;
+          if (Math.hypot(source.x - player.x, source.y - player.y) > ELECTRIC_LINK_RANGE) continue;
+          connected.add(player);
+          grew = true;
+        }
+      }
+    }
+    return (
+      connected.size >= END_POWER_MIN_PLAYERS &&
+      [...connected].some((player) => this.playerOverlaps(player, END_POWER_TARGET))
+    );
+  }
+
   private updateGameplay() {
     this.updateElectricity();
     const now = Date.now();
+    if (this.hasEndPowerChain()) this.unlockedDoors.add(END_POWER_DOOR_ID);
     const totalPlayers = this.state.players.size;
 
     const occupantsByPlate = new Map<string, PlateOccupant[]>();
@@ -270,11 +357,14 @@ export class MainRoom extends Room {
         definition.doorIds.includes(doorId),
       );
       const satisfied =
-        doorId === TRASH_DOOR_ID
-          ? this.state.button.stage === 2 && this.prankBallsRemaining() === 0
-          : doorDef?.plateGroups
-            ? doorDef.plateGroups.some((group) => group.every((id) => activePlates.get(id)))
-            : gatingPlates.length > 0 && gatingPlates.every((plate) => activePlates.get(plate.id));
+        doorId === END_POWER_DOOR_ID
+          ? false
+          : doorId === TRASH_DOOR_ID
+            ? this.state.button.stage === 2 && this.prankBallsRemaining() === 0
+            : doorDef?.plateGroups
+              ? doorDef.plateGroups.some((group) => group.every((id) => activePlates.get(id)))
+              : gatingPlates.length > 0 &&
+                gatingPlates.every((plate) => activePlates.get(plate.id));
       if (satisfied) {
         this.doorOpenUntil.set(doorId, now + DOOR_HOLD_MS);
         if (PERMANENT_DOORS.has(doorId)) this.unlockedDoors.add(doorId);

@@ -6,6 +6,7 @@ interface MultiplayerEvents {
   onState: (state: RoomState, sessionId: string) => void;
   onSpray: (x: number, y: number, angle: number, color: number) => void;
   onButtonPress: () => void;
+  onPropEffect: (id: string, action: string, affectsLocal: boolean) => void;
   onConnected: () => void;
   onDisconnected: () => void;
   onError: (error: unknown) => void;
@@ -75,6 +76,15 @@ export class MultiplayerClient {
       this.events.onSpray(message.x, message.y, message.angle, message.color),
     );
     room.onMessage("buttonPress", () => this.events.onButtonPress());
+    room.onMessage(
+      "propEffect",
+      (message: { id: string; action: string; recipient?: string; victims?: string[] }) => {
+        const affectsLocal =
+          message.recipient === room.sessionId ||
+          message.victims?.includes(room.sessionId) === true;
+        this.events.onPropEffect(message.id, message.action, affectsLocal);
+      },
+    );
     room.onLeave(() => {
       if (this.room !== room || !this.active) return;
       this.room = undefined;
@@ -121,6 +131,10 @@ export class MultiplayerClient {
 
   pressButton() {
     this.room?.send("pressButton", {});
+  }
+
+  interactProp(id: string) {
+    this.room?.send("interactProp", { id });
   }
 
   async disconnect() {

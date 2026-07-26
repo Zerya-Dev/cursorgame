@@ -35,10 +35,16 @@ export interface EntityState {
   color: string;
 }
 
+export interface InteractivePropState {
+  id: string;
+  status: number;
+}
+
 export interface RoomState {
   players: MapSchema<Player>;
   doors: MapSchema<DoorState>;
   plates: MapSchema<PressurePlateState>;
   entities: MapSchema<EntityState>;
+  interactiveProps: MapSchema<InteractivePropState>;
   button: ButtonState;
 }

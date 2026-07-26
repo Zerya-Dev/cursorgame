@@ -1,13 +1,13 @@
 import Phaser from "phaser";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "@shared";
 import {
-  BUTTON,
   COLOR_STATIONS,
   CHEESE,
-  ELECTRIC_SOURCE,
+  ELECTRIC_SOURCES,
   END_CREDITS_GITHUB,
   GITHUB_URL,
   LAVA_ZONES,
+  INTERACTIVE_PROPS,
   MOVING_LAVA_WALLS,
   MOVING_WALL_ROOM_LEFT,
   MOVING_WALL_ROOM_RIGHT,
@@ -47,6 +47,12 @@ import { buildElectricSource, setElectrified } from "../gameplay/electric";
 import { FONT_HAND, INK_SOFT_CSS } from "../gameplay/palette";
 import { RenderPlayers } from "../gameplay/renderPlayers";
 import { SprayLayer } from "../gameplay/spray";
+import {
+  buildInteractiveProps,
+  playInteractivePropEffect,
+  updateInteractiveProp,
+} from "../gameplay/interactiveProps";
+import type { InteractivePropRuntime } from "../gameplay/interactiveProps";
 import { createEntityView } from "../entities/registry";
 import type { EntityView, PredictionContext } from "../entities/registry";
 import { MultiplayerClient } from "../network/MultiplayerClient";
@@ -64,6 +70,7 @@ export class GameScene extends Phaser.Scene {
   private plates: PlateRuntime[] = [];
   private movingWalls: MovingWallRuntime[] = [];
   private button!: ButtonRuntime;
+  private interactiveProps: InteractivePropRuntime[] = [];
   private multiplayer?: MultiplayerClient;
   private renderPlayers!: RenderPlayers;
   private entities = new Map<string, EntityView>();
@@ -84,6 +91,8 @@ export class GameScene extends Phaser.Scene {
   private previousTouch = new Phaser.Math.Vector2();
   private noclip = false;
   private speedBoost = false;
+  private powerupSpeedUntil = 0;
+  private awaitingRespawn = false;
   private readonly radius = PLAYER_RADIUS;
   private readonly sensitivity = 0.82;
   private readonly movementResponse = 14;
@@ -111,8 +120,9 @@ export class GameScene extends Phaser.Scene {
     this.movingWalls = buildMovingLavaWalls(this, MOVING_LAVA_WALLS);
     buildSlides(this, 1);
     buildWorldTexts(this, WORLD_TEXTS);
-    buildElectricSource(this, ELECTRIC_SOURCE);
+    for (const source of ELECTRIC_SOURCES) buildElectricSource(this, source);
     this.button = buildButton(this);
+    this.interactiveProps = buildInteractiveProps(this);
     this.renderPlayers = new RenderPlayers(this);
 
     this.touchNavigation = window.matchMedia("(pointer: coarse)").matches;
@@ -134,7 +144,6 @@ export class GameScene extends Phaser.Scene {
       .text(16, 14, "", { fontFamily: FONT_HAND, fontSize: "22px", color: INK_SOFT_CSS })
       .setScrollFactor(0)
       .setDepth(1000);
-
     if (this.touchNavigation) this.updateHint();
 
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
@@ -146,10 +155,17 @@ export class GameScene extends Phaser.Scene {
       }
       if (
         (this.touchNavigation || this.input.mouse?.locked) &&
-        circleOverlapsRect(this.cursor.x, this.cursor.y, this.radius, BUTTON)
+        circleOverlapsRect(this.cursor.x, this.cursor.y, this.radius, this.button.rect.getBounds())
       ) {
         animateButtonPress(this, this.button);
         this.multiplayer?.pressButton();
+        return;
+      }
+      const prop = INTERACTIVE_PROPS.find((candidate) =>
+        circleOverlapsRect(this.cursor.x, this.cursor.y, this.radius, candidate),
+      );
+      if ((this.touchNavigation || this.input.mouse?.locked) && prop) {
+        this.multiplayer?.interactProp(prop.id);
         return;
       }
       if (this.touchNavigation) {
@@ -205,6 +221,22 @@ export class GameScene extends Phaser.Scene {
       onState: (state, sessionId) => this.syncState(state, sessionId),
       onSpray: (x, y, angle, color) => this.sprayLayer.spray(this.time.now, x, y, angle, color),
       onButtonPress: () => animateButtonPress(this, this.button),
+      onPropEffect: (id, action, affectsLocal) => {
+        const runtime = this.interactiveProps.find(({ def }) => def.id === id);
+        if (!runtime) return;
+        playInteractivePropEffect(this, runtime, action);
+        if (action === "explode" && affectsLocal) {
+          this.awaitingRespawn = true;
+          this.velocity.set(0, 0);
+          this.pendingInput.set(0, 0);
+          this.time.delayedCall(420, () => this.respawnFromExplosion());
+        } else if (action === "speed" && affectsLocal) {
+          this.powerupSpeedUntil = this.time.now + 8000;
+          this.status.setText("speed boost! 8 seconds");
+        } else if (action === "nice" && affectsLocal) {
+          this.status.setText("nothing bad happened. suspicious.");
+        }
+      },
       onConnected: () => this.updateHint(),
       onDisconnected: () => {
         this.renderPlayers.clear();
@@ -252,11 +284,14 @@ export class GameScene extends Phaser.Scene {
     const cursorFromX = this.cursor.x;
     const cursorFromY = this.cursor.y;
 
-    if (this.updateSlide(time, dt)) {
+    if (this.awaitingRespawn) {
+      this.pendingInput.set(0, 0);
+      this.velocity.set(0, 0);
+    } else if (this.updateSlide(time, dt)) {
       this.pendingInput.set(0, 0);
       this.velocity.set(0, 0);
     } else {
-      const speedMultiplier = this.speedBoost ? 5 : 1;
+      const speedMultiplier = this.speedBoost ? 5 : time < this.powerupSpeedUntil ? 1.8 : 1;
       this.velocity.x +=
         this.pendingInput.x * this.sensitivity * this.movementResponse * speedMultiplier;
       this.velocity.y +=
@@ -408,6 +443,19 @@ export class GameScene extends Phaser.Scene {
     this.spraying = false;
   }
 
+  private respawnFromExplosion() {
+    this.awaitingRespawn = false;
+    this.cursor.setPosition(SPAWN_POINT.x, SPAWN_POINT.y);
+    this.cursorOutline.setPosition(SPAWN_POINT.x, SPAWN_POINT.y);
+    this.velocity.set(0, 0);
+    this.pendingInput.set(0, 0);
+    this.ride = undefined;
+    this.stopSpraying();
+    this.multiplayer?.publishPosition(this.time.now, SPAWN_POINT.x, SPAWN_POINT.y);
+    this.cameras.main.flash(280, 255, 245, 220);
+    this.status.setText("boom. back to spawn.");
+  }
+
   private setClicking(button: "left" | "right" | null) {
     this.cursorOutline.setTexture(
       button === "left"
@@ -448,6 +496,10 @@ export class GameScene extends Phaser.Scene {
       }
     });
     updateButtonView(this.button, state.button.stage, state.button.clicks, state.button.target);
+    state.interactiveProps.forEach((prop, id) => {
+      const runtime = this.interactiveProps.find(({ def }) => def.id === id);
+      if (runtime) updateInteractiveProp(runtime, prop.status);
+    });
 
     const activeEntities = new Set<string>();
     state.entities.forEach((entity, id) => {
