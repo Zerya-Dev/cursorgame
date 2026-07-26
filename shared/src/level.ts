@@ -728,8 +728,15 @@ export const WORLD_TEXTS: WorldText[] = [
   {
     x: 1740,
     y: 9340,
-    text: "light the *hackclub campfire* with your bodies",
+    text: "complete the circuit with your bodies",
     size: 20,
+    rotation: -1,
+  },
+  {
+    x: 1740,
+    y: 9370,
+    text: "connect the electricity to the *hackclub campfire* with your bodies",
+    size: 16,
     rotation: -1,
   },
   { x: 1000, y: -255, text: "and... Claude", size: 28, rotation: -1 },
